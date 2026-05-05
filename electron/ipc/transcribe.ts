@@ -73,13 +73,17 @@ async function exportTranscript(result: TranscriptResult, opts: SaveOptions) {
   const destination = opts.destination ?? path.join(process.env.HOME ?? '', 'Downloads');
   await fs.ensureDir(destination);
 
+  const paragraphText = result.segments
+    .map((segment) => segment.text.trim())
+    .filter(Boolean)
+    .join('\n\n');
   const timestampedText = result.segments
     .map((segment) => `[${formatTimestamp(segment.start)}] ${segment.text}`)
     .join('\n');
 
   for (const format of opts.formats) {
     const filePath = path.join(destination, `${baseName}_${stamp}.${format === 'txt-timestamps' ? 'txt' : format}`);
-    let content = result.text;
+    let content = paragraphText || result.text;
 
     if (format === 'txt-timestamps') {
       content = timestampedText;

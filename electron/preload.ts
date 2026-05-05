@@ -50,6 +50,8 @@ export interface Model {
   path?: string;
   managed: boolean;
   source: 'wespr' | 'external';
+  downloadable: boolean;
+  note?: string;
 }
 
 export interface DownloadProgress {
@@ -59,6 +61,8 @@ export interface DownloadProgress {
   speed: number;
   eta: number;
 }
+
+export type DownloadResult = 'completed' | 'paused' | 'cancelled';
 
 export interface FileInfo {
   name: string;
@@ -114,11 +118,12 @@ const api = {
   cancelTranscribe: () => ipcRenderer.invoke('wespr:cancel-transcribe'),
 
   listModels: () => ipcRenderer.invoke('wespr:list-models') as Promise<Model[]>,
-  downloadModel: (id: string) => ipcRenderer.invoke('wespr:download-model', id),
+  downloadModel: (id: string) => ipcRenderer.invoke('wespr:download-model', id) as Promise<DownloadResult>,
   onDownloadProgress: (cb: (p: DownloadProgress) => void) => on('wespr:download-progress', cb),
   pauseDownload: (id: string) => ipcRenderer.invoke('wespr:pause-download', id),
   cancelDownload: (id: string) => ipcRenderer.invoke('wespr:cancel-download', id),
   deleteModel: (id: string) => ipcRenderer.invoke('wespr:delete-model', id),
+  getPausedDownloads: () => ipcRenderer.invoke('wespr:get-paused-downloads') as Promise<string[]>,
 
   openFile: () => ipcRenderer.invoke('wespr:open-file') as Promise<string | null>,
   saveTranscript: (result: TranscriptResult, opts: SaveOptions) =>

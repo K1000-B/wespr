@@ -2,6 +2,7 @@ import type {
   AppPrefs,
   AppVersion,
   DownloadProgress,
+  DownloadResult,
   FileInfo,
   Model,
   ProgressEvent,
@@ -25,13 +26,14 @@ const browserFallback: WesprApi = {
   onError: (_cb: (e: TranscribeError) => void) => noop,
   cancelTranscribe: async () => {},
   listModels: async (): Promise<Model[]> => [],
-  downloadModel: async (_id: string) => {
+  downloadModel: async (_id: string): Promise<DownloadResult> => {
     throw new Error('Le téléchargement de modèles fonctionne uniquement dans l’app Electron.');
   },
   onDownloadProgress: (_cb: (p: DownloadProgress) => void) => noop,
   pauseDownload: async (_id: string) => {},
   cancelDownload: async (_id: string) => {},
   deleteModel: async (_id: string) => {},
+  getPausedDownloads: async () => [],
   openFile: async () => null,
   saveTranscript: async (_result: TranscriptResult, _opts: SaveOptions) => {
     throw new Error('L’export fonctionne uniquement dans l’app Electron.');

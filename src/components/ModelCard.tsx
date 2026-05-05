@@ -7,9 +7,10 @@ type Props = {
 };
 
 export function ModelCard({ model }: Props) {
-  const { progress, download, deleteModel, pause } = useModelsStore();
+  const { progress, pausedIds, download, deleteModel, pause, cancel } = useModelsStore();
   const current = progress[model.id];
   const isDownloading = Boolean(current);
+  const isPaused = pausedIds.includes(model.id);
   const recommended = Boolean(model.default);
 
   return (
@@ -51,6 +52,8 @@ export function ModelCard({ model }: Props) {
         <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
           {model.managed ? 'Installé par WeSpR' : 'Détecté dans un dossier existant'}
         </div>
+      ) : model.note ? (
+        <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>{model.note}</div>
       ) : null}
 
       <div style={{ display: 'flex', gap: 6 }}>
@@ -92,9 +95,22 @@ export function ModelCard({ model }: Props) {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
             <span>{formatBytes(current.speed)}/s</span>
-            <button className="btn btn-ghost btn-sm" onClick={() => pause(model.id)}>
-              Pause
-            </button>
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              {isPaused ? (
+                <>
+                  <button className="btn btn-ghost btn-sm" onClick={() => download(model.id)}>
+                    Reprendre
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => cancel(model.id)}>
+                    Annuler
+                  </button>
+                </>
+              ) : (
+                <button className="btn btn-ghost btn-sm" onClick={() => pause(model.id)}>
+                  Pause
+                </button>
+              )}
+            </div>
           </div>
         </>
       ) : model.installed ? (
@@ -111,9 +127,13 @@ export function ModelCard({ model }: Props) {
       ) : (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ color: 'var(--text-secondary)' }}>{formatBytes(model.size)}</span>
-          <button className="btn btn-secondary btn-sm" onClick={() => download(model.id)}>
-            Installer
-          </button>
+          {model.downloadable ? (
+            <button className="btn btn-secondary btn-sm" onClick={() => download(model.id)}>
+              Installer
+            </button>
+          ) : (
+            <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>Ajout manuel</span>
+          )}
         </div>
       )}
     </div>

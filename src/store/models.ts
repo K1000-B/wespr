@@ -5,6 +5,7 @@ import { wespr } from '../lib/wespr';
 type ModelsState = {
   models: Model[];
   progress: Record<string, DownloadProgress>;
+  pausedIds: string[];
   refresh: () => Promise<void>;
   download: (id: string) => Promise<void>;
   deleteModel: (id: string) => Promise<void>;
@@ -16,13 +17,25 @@ type ModelsState = {
 export const useModelsStore = create<ModelsState>((set, get) => ({
   models: [],
   progress: {},
+  pausedIds: [],
   refresh: async () => {
-    const models = await wespr.listModels();
-    set({ models });
+    const [models, pausedIds] = await Promise.all([wespr.listModels(), wespr.getPausedDownloads()]);
+    set({ models, pausedIds });
   },
   download: async (id: string) => {
-    await wespr.downloadModel(id);
-    await get().refresh();
+    const result = await wespr.downloadModel(id);
+    if (result === 'completed') {
+      set((state) => ({
+        pausedIds: state.pausedIds.filter((entry) => entry !== id)
+      }));
+      await get().refresh();
+      return;
+    }
+    if (result === 'cancelled') {
+      set((state) => ({
+        pausedIds: state.pausedIds.filter((entry) => entry !== id)
+      }));
+    }
   },
   deleteModel: async (id: string) => {
     await wespr.deleteModel(id);
@@ -30,13 +43,19 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
   },
   pause: async (id: string) => {
     await wespr.pauseDownload(id);
+    set((state) => ({
+      pausedIds: state.pausedIds.includes(id) ? state.pausedIds : [...state.pausedIds, id]
+    }));
   },
   cancel: async (id: string) => {
     await wespr.cancelDownload(id);
     set((state) => {
       const next = { ...state.progress };
       delete next[id];
-      return { progress: next };
+      return {
+        progress: next,
+        pausedIds: state.pausedIds.filter((entry) => entry !== id)
+      };
     });
   },
   bindProgress: () => {
@@ -45,7 +64,8 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
         progress: {
           ...state.progress,
           [payload.modelId]: payload
-        }
+        },
+        pausedIds: state.pausedIds.filter((entry) => entry !== payload.modelId)
       }));
     });
     return () => {

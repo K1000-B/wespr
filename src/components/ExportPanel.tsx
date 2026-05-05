@@ -20,7 +20,6 @@ type Props = {
 
 export function ExportPanel({ onClose }: Props) {
   const { result } = useTranscriptionStore();
-  const { models } = useModelsStore();
   const [selected, setSelected] = useState<Array<(typeof FORMATS)[number][0]>>(['txt', 'srt']);
   const [includeTimestamps, setIncludeTimestamps] = useState(true);
   const [includeSpeakers, setIncludeSpeakers] = useState(true);
@@ -45,9 +44,14 @@ export function ExportPanel({ onClose }: Props) {
     return null;
   }
 
+  const defaultName = result.sourceFilePath
+    .split('/')
+    .pop()
+    ?.replace(/\.[^.]+$/, '') || 'transcription';
+
   const handleExport = async () => {
     await wespr.saveTranscript(result, {
-      defaultName: 'transcript',
+      defaultName,
       formats: selected,
       includeTimestamps,
       includeSpeakers,
@@ -162,6 +166,10 @@ export function ExportPanel({ onClose }: Props) {
 
         <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
           Dossier d’export: <span className="mono">{exportDirectory || 'Downloads'}</span>
+        </div>
+
+        <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+          Nom de base: <span className="mono">{defaultName}</span>
         </div>
 
         <button className="btn btn-primary btn-lg" onClick={handleExport} disabled={selected.length === 0}>

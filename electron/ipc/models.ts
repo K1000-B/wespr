@@ -6,6 +6,7 @@ import {
   cancelDownload,
   deleteModel,
   downloadModel,
+  getPausedDownloads,
   getModelsDir,
   listModels,
   pauseDownload
@@ -36,7 +37,7 @@ export function registerModelIpc() {
   ipcMain.handle('wespr:list-models', async () => listModels());
 
   ipcMain.handle('wespr:download-model', async (_event, id: string) => {
-    await downloadModel(id, (progress) => {
+    return downloadModel(id, (progress) => {
       sendToRenderer('wespr:download-progress', progress);
     });
   });
@@ -44,6 +45,7 @@ export function registerModelIpc() {
   ipcMain.handle('wespr:pause-download', (_event, id: string) => pauseDownload(id));
   ipcMain.handle('wespr:cancel-download', (_event, id: string) => cancelDownload(id));
   ipcMain.handle('wespr:delete-model', async (_event, id: string) => deleteModel(id));
+  ipcMain.handle('wespr:get-paused-downloads', async () => getPausedDownloads());
 
   ipcMain.handle('wespr:get-prefs', async () => prefsStore.getAll());
   ipcMain.handle('wespr:set-prefs', async (_event, prefs: Partial<AppPrefs>) => {

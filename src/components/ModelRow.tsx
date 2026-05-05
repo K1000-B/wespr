@@ -7,8 +7,9 @@ type Props = {
 };
 
 export function ModelRow({ model }: Props) {
-  const { progress, download, deleteModel } = useModelsStore();
+  const { progress, pausedIds, download, deleteModel, cancel } = useModelsStore();
   const current = progress[model.id];
+  const isPaused = pausedIds.includes(model.id);
 
   return (
     <div
@@ -44,7 +45,18 @@ export function ModelRow({ model }: Props) {
       </div>
       <div style={{ justifySelf: 'end' }}>
         {current ? (
-          <span className="pill pill-info">En cours</span>
+          isPaused ? (
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => download(model.id)}>
+                Reprendre
+              </button>
+              <button className="btn btn-ghost btn-sm" onClick={() => cancel(model.id)}>
+                Annuler
+              </button>
+            </div>
+          ) : (
+            <span className="pill pill-info">En cours</span>
+          )
         ) : model.installed ? (
           model.managed ? (
             <button className="btn btn-ghost btn-sm" onClick={() => deleteModel(model.id)}>
@@ -54,9 +66,13 @@ export function ModelRow({ model }: Props) {
             <span className="pill pill-neutral">Externe</span>
           )
         ) : (
-          <button className="btn btn-secondary btn-sm" onClick={() => download(model.id)}>
-            Installer
-          </button>
+          model.downloadable ? (
+            <button className="btn btn-secondary btn-sm" onClick={() => download(model.id)}>
+              Installer
+            </button>
+          ) : (
+            <span className="pill pill-neutral">Ajout manuel</span>
+          )
         )}
       </div>
     </div>

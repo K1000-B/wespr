@@ -9,6 +9,9 @@ export function formatBytes(bytes: number) {
 }
 
 export function formatDuration(seconds: number) {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return '00:00:00';
+  }
   const safe = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(safe / 3600);
   const minutes = Math.floor((safe % 3600) / 60);
@@ -36,4 +39,3 @@ export function languageLabel(code: string) {
   };
   return map[code] ?? code.toUpperCase();
 }
-

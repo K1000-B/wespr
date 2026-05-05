@@ -12,6 +12,8 @@ export type ModelDefinition = {
   lang: 'multi' | 'en';
   tags: string[];
   default?: boolean;
+  downloadable?: boolean;
+  note?: string;
 };
 
 export type ModelRecord = ModelDefinition & {
@@ -28,6 +30,8 @@ export type DownloadProgress = {
   speed: number;
   eta: number;
 };
+
+export type DownloadResult = 'completed' | 'paused' | 'cancelled';
 
 type DownloadState = {
   controller: AbortController;
@@ -46,7 +50,14 @@ export const MODELS: ModelDefinition[] = [
   { id: 'base.en', size: 142e6, lang: 'en', tags: [] },
   { id: 'small', size: 466e6, lang: 'multi', tags: [], default: true },
   { id: 'small.en', size: 466e6, lang: 'en', tags: [], default: true },
-  { id: 'small.en-tdrz', size: 466e6, lang: 'en', tags: ['diarize'] },
+  {
+    id: 'small.en-tdrz',
+    size: 466e6,
+    lang: 'en',
+    tags: ['diarize'],
+    downloadable: false,
+    note: 'À ajouter manuellement depuis whisper.cpp pour activer la reconnaissance des locuteurs.'
+  },
   { id: 'medium', size: 1500e6, lang: 'multi', tags: [] },
   { id: 'medium.en', size: 1500e6, lang: 'en', tags: [] },
   { id: 'large-v3', size: 3100e6, lang: 'multi', tags: [] },
@@ -118,7 +129,9 @@ export async function listModels(): Promise<ModelRecord[]> {
         installed: Boolean(installedModel),
         path: installedModel?.path,
         managed: installedModel?.source === 'wespr',
-        source: installedModel?.source ?? 'wespr'
+        source: installedModel?.source ?? 'wespr',
+        downloadable: model.downloadable !== false,
+        note: model.note
       };
     })
   );
@@ -148,10 +161,13 @@ export function selectModel(
 export async function downloadModel(
   modelId: string,
   onProgress: (payload: DownloadProgress) => void
-) {
+): Promise<DownloadResult> {
   const model = MODELS.find((entry) => entry.id === modelId);
   if (!model) {
     throw new Error(`Modèle inconnu: ${modelId}`);
+  }
+  if (model.downloadable === false) {
+    throw new Error(model.note ?? `Le modèle ${modelId} doit être ajouté manuellement.`);
   }
 
   await fs.ensureDir(getModelsDir());
@@ -198,6 +214,7 @@ export async function downloadModel(
         ? totalFromLength
         : model.size;
   let bytesReceived = resumedBytes;
+  let interrupted: DownloadResult | null = null;
   const writer = fs.createWriteStream(partialPath, {
     flags: appendMode ? 'a' : 'w'
   });
@@ -225,10 +242,12 @@ export async function downloadModel(
   }).catch(async (error) => {
     const state = downloads.get(modelId);
     if (state?.paused) {
+      interrupted = 'paused';
       return;
     }
     if (state?.cancelled) {
       await fs.remove(partialPath);
+      interrupted = 'cancelled';
       return;
     }
     const normalized = toModelDownloadError(error, modelId);
@@ -236,9 +255,13 @@ export async function downloadModel(
     throw normalized;
   });
 
+  if (interrupted) {
+    return interrupted;
+  }
+
   const state = downloads.get(modelId);
   if (state?.paused || state?.cancelled) {
-    return;
+    return state.paused ? 'paused' : 'cancelled';
   }
 
   if (!(await fs.pathExists(partialPath))) {
@@ -263,6 +286,7 @@ export async function downloadModel(
   }
   downloads.delete(modelId);
   await updatePausedDownloads(modelId, false);
+  return 'completed';
 }
 
 export function pauseDownload(modelId: string) {

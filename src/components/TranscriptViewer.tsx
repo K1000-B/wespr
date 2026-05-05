@@ -59,6 +59,10 @@ export function TranscriptViewer({ onExport }: Props) {
     window.setTimeout(() => setCopied(false), 1400);
   };
 
+  const syncDuration = (value: number) => {
+    setDuration(Number.isFinite(value) && value > 0 ? value : result.duration);
+  };
+
   const togglePlayback = async () => {
     const audio = audioRef.current;
     if (!audio) {
@@ -135,7 +139,8 @@ export function TranscriptViewer({ onExport }: Props) {
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || result.duration)}
+          onLoadedMetadata={(event) => syncDuration(event.currentTarget.duration)}
+          onDurationChange={(event) => syncDuration(event.currentTarget.duration)}
           onEnded={() => setIsPlaying(false)}
         />
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
