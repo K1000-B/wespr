@@ -17,6 +17,8 @@ export type ModelDefinition = {
 export type ModelRecord = ModelDefinition & {
   installed: boolean;
   path?: string;
+  managed: boolean;
+  source: 'wespr' | 'external';
 };
 
 export type DownloadProgress = {
@@ -62,14 +64,33 @@ export function getModelPath(modelId: string) {
   return path.join(getModelsDir(), `ggml-${modelId}.bin`);
 }
 
-export async function resolveModelPath(modelId: string) {
-  const candidates = getModelCandidates(modelId);
-  for (const candidate of candidates) {
-    if (await fs.pathExists(candidate)) {
+async function isValidModelFile(filePath: string, expectedBytes: number) {
+  if (!(await fs.pathExists(filePath))) {
+    return false;
+  }
+
+  const stat = await fs.stat(filePath);
+  return Math.abs(stat.size - expectedBytes) <= 5_000_000;
+}
+
+async function resolveInstalledModel(modelId: string) {
+  const model = MODELS.find((entry) => entry.id === modelId);
+  if (!model) {
+    return null;
+  }
+
+  for (const candidate of getModelCandidates(modelId)) {
+    if (await isValidModelFile(candidate.path, model.size)) {
       return candidate;
     }
   }
-  return getModelPath(modelId);
+
+  return null;
+}
+
+export async function resolveModelPath(modelId: string) {
+  const installed = await resolveInstalledModel(modelId);
+  return installed?.path ?? getModelPath(modelId);
 }
 
 export async function listModels(): Promise<ModelRecord[]> {
@@ -77,12 +98,13 @@ export async function listModels(): Promise<ModelRecord[]> {
 
   return Promise.all(
     MODELS.map(async (model) => {
-      const modelPath = await resolveModelPath(model.id);
-      const installed = await fs.pathExists(modelPath);
+      const installedModel = await resolveInstalledModel(model.id);
       return {
         ...model,
-        installed,
-        path: installed ? modelPath : undefined
+        installed: Boolean(installedModel),
+        path: installedModel?.path,
+        managed: installedModel?.source === 'wespr',
+        source: installedModel?.source ?? 'wespr'
       };
     })
   );
@@ -122,7 +144,7 @@ export async function downloadModel(
 
   const destination = getModelPath(modelId);
   const partialPath = `${destination}.part`;
-  const existingBytes = (await fs.pathExists(partialPath))
+  const partialBytes = (await fs.pathExists(partialPath))
     ? (await fs.stat(partialPath)).size
     : 0;
 
@@ -131,23 +153,46 @@ export async function downloadModel(
 
   const startedAt = Date.now();
   const url = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${modelId}.bin`;
-  const response = await axios.get(url, {
-    responseType: 'stream',
-    signal: controller.signal,
-    headers: existingBytes > 0 ? { Range: `bytes=${existingBytes}-` } : undefined
-  });
+  let response;
 
-  const totalBytes = Number(response.headers['content-length'] ?? model.size) + existingBytes;
-  let bytesReceived = existingBytes;
+  try {
+    response = await axios.get(url, {
+      responseType: 'stream',
+      signal: controller.signal,
+      headers: partialBytes > 0 ? { Range: `bytes=${partialBytes}-` } : undefined,
+      validateStatus: (status) => status >= 200 && status < 400
+    });
+  } catch (error) {
+    downloads.delete(modelId);
+    throw toModelDownloadError(error, modelId);
+  }
+
+  const appendMode = partialBytes > 0 && response.status === 206;
+  if (partialBytes > 0 && !appendMode && (await fs.pathExists(partialPath))) {
+    await fs.remove(partialPath);
+  }
+
+  const resumedBytes = appendMode ? partialBytes : 0;
+  const contentRange = String(response.headers['content-range'] ?? '');
+  const totalFromRange = Number(contentRange.split('/').pop());
+  const totalFromLength = Number(response.headers['content-length'] ?? 0);
+  const totalBytes = Number.isFinite(totalFromRange) && totalFromRange > 0
+    ? totalFromRange
+    : appendMode && totalFromLength > 0
+      ? totalFromLength + resumedBytes
+      : totalFromLength > 0
+        ? totalFromLength
+        : model.size;
+  let bytesReceived = resumedBytes;
   const writer = fs.createWriteStream(partialPath, {
-    flags: existingBytes > 0 ? 'a' : 'w'
+    flags: appendMode ? 'a' : 'w'
   });
 
   await new Promise<void>((resolve, reject) => {
     response.data.on('data', (chunk: Buffer) => {
       bytesReceived += chunk.length;
       const elapsedSeconds = Math.max((Date.now() - startedAt) / 1000, 1);
-      const speed = (bytesReceived - existingBytes) / elapsedSeconds;
+      const speed = (bytesReceived - resumedBytes) / elapsedSeconds;
       const remaining = Math.max(totalBytes - bytesReceived, 0);
       onProgress({
         modelId,
@@ -172,8 +217,9 @@ export async function downloadModel(
       await fs.remove(partialPath);
       return;
     }
-    await writeLog(`Téléchargement du modèle ${modelId} en échec: ${String(error)}`);
-    throw error;
+    const normalized = toModelDownloadError(error, modelId);
+    await writeLog(`Téléchargement du modèle ${modelId} en échec: ${normalized.message}`);
+    throw normalized;
   });
 
   const state = downloads.get(modelId);
@@ -181,11 +227,25 @@ export async function downloadModel(
     return;
   }
 
-  await fs.move(partialPath, destination, { overwrite: true });
-  const stat = await fs.stat(destination);
-  if (Math.abs(stat.size - model.size) > 5_000_000) {
+  if (!(await fs.pathExists(partialPath))) {
+    downloads.delete(modelId);
+    throw new Error('Téléchargement interrompu avant la fin du fichier — relancez l’installation du modèle.');
+  }
+
+  try {
+    await fs.move(partialPath, destination, { overwrite: true });
+  } catch (error) {
+    downloads.delete(modelId);
+    if (typeof error === 'object' && error && 'code' in error && String((error as { code?: unknown }).code) === 'ENOENT') {
+      throw new Error('Téléchargement interrompu avant la fin du fichier — relancez l’installation du modèle.');
+    }
+    throw toModelDownloadError(error, modelId);
+  }
+
+  if (!(await isValidModelFile(destination, model.size))) {
     await fs.remove(destination);
-    throw new Error('Le fichier téléchargé semble incomplet.');
+    downloads.delete(modelId);
+    throw new Error('Le fichier téléchargé est incomplet — relancez l’installation du modèle.');
   }
   downloads.delete(modelId);
   await updatePausedDownloads(modelId, false);
@@ -221,26 +281,9 @@ function controllerCleanup(modelId: string) {
 }
 
 export async function deleteModel(modelId: string) {
-  const modelPath = await resolveModelPath(modelId);
-  if (modelPath.startsWith(getModelsDir())) {
-    await fs.remove(modelPath);
-  }
-}
-
-export async function ensureStarterModels(
-  onLog: (message: string) => void,
-  onProgress: (payload: DownloadProgress) => void
-) {
-  const existing = await listModels();
-  const mustInstall = ['small', 'small.en'].filter((id) => {
-    const model = existing.find((entry) => entry.id === id);
-    return !model?.installed;
-  });
-
-  for (const modelId of mustInstall) {
-    onLog(`Téléchargement initial de ${modelId}...`);
-    await downloadModel(modelId, onProgress);
-    onLog(`${modelId} prêt.`);
+  const installed = await resolveInstalledModel(modelId);
+  if (installed?.source === 'wespr') {
+    await fs.remove(installed.path);
   }
 }
 
@@ -268,10 +311,68 @@ function getModelCandidates(modelId: string) {
   const home = os.homedir();
 
   return [
-    getModelPath(modelId),
-    ...(explicitDir ? [path.join(explicitDir, fileName)] : []),
-    '/Users/camile/Dev/ai/whisper-cpp/models/' + fileName,
-    path.join(home, 'Dev', 'ai', 'whisper-cpp', 'models', fileName),
-    path.join(home, '.cache', 'whisper.cpp', fileName)
+    {
+      path: getModelPath(modelId),
+      source: 'wespr' as const
+    },
+    ...(explicitDir
+      ? [
+          {
+            path: path.join(explicitDir, fileName),
+            source: 'external' as const
+          }
+        ]
+      : []),
+    {
+      path: '/Users/camile/Dev/ai/whisper-cpp/models/' + fileName,
+      source: 'external' as const
+    },
+    {
+      path: path.join(home, 'Dev', 'ai', 'whisper-cpp', 'models', fileName),
+      source: 'external' as const
+    },
+    {
+      path: path.join(home, '.cache', 'whisper.cpp', fileName),
+      source: 'external' as const
+    }
   ];
+}
+
+function toModelDownloadError(error: unknown, modelId: string) {
+  if (axios.isAxiosError(error)) {
+    if (error.code === 'ERR_CANCELED') {
+      return new Error('Téléchargement interrompu.');
+    }
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      return new Error(`Le serveur a refusé l’accès au modèle ${modelId} — réessayez plus tard.`);
+    }
+    if (error.response?.status === 404) {
+      return new Error(`Le modèle ${modelId} est introuvable sur le serveur.`);
+    }
+    if (error.code === 'ENOSPC') {
+      return new Error('Espace disque insuffisant pour installer ce modèle.');
+    }
+    if (error.code === 'EACCES' || error.code === 'EPERM') {
+      return new Error('Permission refusée pendant l’écriture du modèle sur ce Mac.');
+    }
+    if (error.code === 'ENOTFOUND' || error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+      return new Error('Connexion impossible pour télécharger le modèle — vérifiez votre réseau puis réessayez.');
+    }
+  }
+
+  if (typeof error === 'object' && error && 'code' in error) {
+    const code = String((error as { code?: unknown }).code);
+    if (code === 'ENOSPC') {
+      return new Error('Espace disque insuffisant pour installer ce modèle.');
+    }
+    if (code === 'EACCES' || code === 'EPERM') {
+      return new Error('Permission refusée pendant l’écriture du modèle sur ce Mac.');
+    }
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error('Téléchargement impossible pour le moment — réessayez dans quelques instants.');
 }

@@ -1,4 +1,5 @@
 import fs from 'fs-extra';
+import path from 'node:path';
 import { getTempDir, writeLog } from './ffmpeg';
 
 export async function cleanupJob(jobId: string, keepOnError = false) {
@@ -28,3 +29,36 @@ export async function clearTempCache() {
   return { freed };
 }
 
+export async function getTempCacheSize() {
+  const tmp = '/tmp';
+  const entries = await fs.readdir(tmp);
+  let total = 0;
+
+  for (const entry of entries) {
+    if (!entry.startsWith('wespr-')) {
+      continue;
+    }
+
+    total += await getPathSize(path.join(tmp, entry));
+  }
+
+  return total;
+}
+
+async function getPathSize(targetPath: string): Promise<number> {
+  if (!(await fs.pathExists(targetPath))) {
+    return 0;
+  }
+
+  const stat = await fs.stat(targetPath);
+  if (stat.isFile()) {
+    return stat.size;
+  }
+
+  const entries = await fs.readdir(targetPath);
+  let total = 0;
+  for (const entry of entries) {
+    total += await getPathSize(path.join(targetPath, entry));
+  }
+  return total;
+}

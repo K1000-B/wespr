@@ -46,9 +46,13 @@ export function ModelRow({ model }: Props) {
         {current ? (
           <span className="pill pill-info">En cours</span>
         ) : model.installed ? (
-          <button className="btn btn-ghost btn-sm" onClick={() => deleteModel(model.id)}>
-            Supprimer
-          </button>
+          model.managed ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => deleteModel(model.id)}>
+              Supprimer
+            </button>
+          ) : (
+            <span className="pill pill-neutral">Externe</span>
+          )
         ) : (
           <button className="btn btn-secondary btn-sm" onClick={() => download(model.id)}>
             Installer
@@ -58,4 +62,3 @@ export function ModelRow({ model }: Props) {
     </div>
   );
 }
-

@@ -1,5 +1,6 @@
 import fs from 'fs-extra';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import {
   convertToMonoWav,
@@ -43,6 +44,7 @@ type TranscriptResult = {
   duration: number;
   modelUsed: string;
   processingTime: number;
+  sourceFilePath: string;
 };
 
 let cancelled = false;
@@ -215,6 +217,7 @@ export function registerTranscribeIpc() {
         opts.modelId,
         Math.round((Date.now() - startedAt) / 1000)
       );
+      result.sourceFilePath = opts.filePath;
 
       sendToRenderer('wespr:progress', {
         step: 'cleanup',
@@ -257,4 +260,5 @@ export function registerTranscribeIpc() {
   ipcMain.handle('wespr:save-transcript', async (_event, result: TranscriptResult, opts: SaveOptions) =>
     exportTranscript(result, opts)
   );
+  ipcMain.handle('wespr:get-media-source-url', async (_event, filePath: string) => pathToFileURL(filePath).toString());
 }

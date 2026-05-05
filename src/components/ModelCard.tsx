@@ -47,6 +47,12 @@ export function ModelCard({ model }: Props) {
         )}
       </div>
 
+      {model.installed ? (
+        <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+          {model.managed ? 'Installé par WeSpR' : 'Détecté dans un dossier existant'}
+        </div>
+      ) : null}
+
       <div style={{ display: 'flex', gap: 6 }}>
         {Array.from({ length: 5 }, (_, index) => (
           <span
@@ -94,9 +100,13 @@ export function ModelCard({ model }: Props) {
       ) : model.installed ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="pill pill-success">Prêt pour la transcription</span>
-          <button className="btn btn-ghost btn-sm" onClick={() => deleteModel(model.id)}>
-            Supprimer
-          </button>
+          {model.managed ? (
+            <button className="btn btn-ghost btn-sm" onClick={() => deleteModel(model.id)}>
+              Supprimer
+            </button>
+          ) : (
+            <span style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>Lecture seule</span>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -109,4 +119,3 @@ export function ModelCard({ model }: Props) {
     </div>
   );
 }
-

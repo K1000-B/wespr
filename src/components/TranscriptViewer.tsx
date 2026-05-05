@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranscriptionStore } from '../store/transcription';
 import { formatDuration } from '../lib/utils';
+import { wespr } from '../lib/wespr';
 
 type Props = {
   onExport: () => void;
@@ -9,6 +10,11 @@ type Props = {
 export function TranscriptViewer({ onExport }: Props) {
   const { result, search, setSearch, viewMode, setViewMode } = useTranscriptionStore();
   const [copied, setCopied] = useState(false);
+  const [mediaUrl, setMediaUrl] = useState('');
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const segments = useMemo(() => {
     if (!result) {
@@ -20,14 +26,60 @@ export function TranscriptViewer({ onExport }: Props) {
     );
   }, [result, search]);
 
+  useEffect(() => {
+    if (!result?.sourceFilePath) {
+      setMediaUrl('');
+      return;
+    }
+
+    let active = true;
+    void wespr.getMediaSourceUrl(result.sourceFilePath).then((url) => {
+      if (active) {
+        setMediaUrl(url);
+      }
+    });
+
+    return () => {
+      active = false;
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+    };
+  }, [result?.sourceFilePath]);
+
   if (!result) {
     return null;
   }
+
+  const activeSegmentIndex = segments.findIndex((segment) => currentTime >= segment.start && currentTime < segment.end);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(result.text);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1400);
+  };
+
+  const togglePlayback = async () => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+
+    if (audio.paused) {
+      await audio.play();
+      return;
+    }
+
+    audio.pause();
+  };
+
+  const seekTo = (nextTime: number) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+    audio.currentTime = nextTime;
+    setCurrentTime(nextTime);
   };
 
   return (
@@ -76,6 +128,16 @@ export function TranscriptViewer({ onExport }: Props) {
       </div>
 
       <div className="card" style={{ padding: 'var(--space-4)', display: 'grid', gap: 'var(--space-3)' }}>
+        <audio
+          ref={audioRef}
+          src={mediaUrl}
+          preload="metadata"
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
+          onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || result.duration)}
+          onEnded={() => setIsPlaying(false)}
+        />
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
           <button
             className="btn btn-primary"
@@ -85,15 +147,26 @@ export function TranscriptViewer({ onExport }: Props) {
               padding: 0,
               borderRadius: '50%'
             }}
-            aria-label="Lecture"
+            onClick={() => void togglePlayback()}
+            aria-label={isPlaying ? 'Pause' : 'Lecture'}
           >
-            ▶
+            {isPlaying ? '❚❚' : '▶'}
           </button>
           <div className="mono" style={{ minWidth: 72 }}>
-            {formatDuration(result.duration)}
+            {formatDuration(currentTime)}
           </div>
-          <div style={{ flex: 1, height: 4, borderRadius: 'var(--r-pill)', background: 'var(--bg-3)' }} />
-          <span className="pill pill-violet">1×</span>
+          <input
+            type="range"
+            min={0}
+            max={Math.max(duration || result.duration, 1)}
+            step={0.1}
+            value={Math.min(currentTime, duration || result.duration)}
+            onChange={(event) => seekTo(Number(event.target.value))}
+            style={{ flex: 1 }}
+          />
+          <div className="mono" style={{ minWidth: 72, textAlign: 'right' }}>
+            {formatDuration(duration || result.duration)}
+          </div>
         </div>
       </div>
 
@@ -106,7 +179,7 @@ export function TranscriptViewer({ onExport }: Props) {
         }}
       >
         {segments.map((segment, index) => {
-          const highlighted = index === 0;
+          const highlighted = index === activeSegmentIndex;
           return (
             <div
               key={`${segment.start}-${segment.end}-${index}`}
@@ -123,6 +196,7 @@ export function TranscriptViewer({ onExport }: Props) {
               <button
                 className="btn btn-ghost btn-sm mono"
                 style={{ justifyContent: 'flex-start', padding: 0 }}
+                onClick={() => seekTo(segment.start)}
               >
                 {formatDuration(segment.start)}
               </button>
@@ -149,4 +223,3 @@ export function TranscriptViewer({ onExport }: Props) {
     </div>
   );
 }
-

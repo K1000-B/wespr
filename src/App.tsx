@@ -4,7 +4,7 @@ import { TitleBar } from './components/TitleBar';
 import { Home } from './pages/Home';
 import { Result } from './pages/Result';
 import { Settings } from './pages/Settings';
-import { hasNativeBridge } from './lib/wespr';
+import { hasNativeBridge, wespr } from './lib/wespr';
 import { useModelsStore } from './store/models';
 import { useTranscriptionStore } from './store/transcription';
 
@@ -30,7 +30,7 @@ function PageSwitcher() {
 }
 
 export default function App() {
-  const { page, setPage, bindIpc, reset } = useTranscriptionStore();
+  const { page, setPage, bindIpc, reset, applyPrefs } = useTranscriptionStore();
   const { refresh, bindProgress } = useModelsStore();
 
   useEffect(() => {
@@ -41,6 +41,11 @@ export default function App() {
 
     void refresh().catch((error) => {
       console.error('Chargement des modèles impossible', error);
+    });
+    void wespr.getPrefs().then((prefs) => {
+      applyPrefs(prefs);
+    }).catch((error) => {
+      console.error('Chargement des préférences impossible', error);
     });
 
     let offIpc = () => {};
@@ -57,7 +62,7 @@ export default function App() {
       offIpc();
       offProgress();
     };
-  }, [bindIpc, bindProgress, refresh]);
+  }, [applyPrefs, bindIpc, bindProgress, refresh]);
 
   const pageLabel = page === 'home' ? 'Nouvelle transcription' : page === 'result' ? 'Résultat' : 'Réglages';
 

@@ -30,6 +30,7 @@ export interface TranscriptResult {
   duration: number;
   modelUsed: string;
   processingTime: number;
+  sourceFilePath: string;
 }
 
 export interface TranscribeError {
@@ -47,6 +48,8 @@ export interface Model {
   installed: boolean;
   default?: boolean;
   path?: string;
+  managed: boolean;
+  source: 'wespr' | 'external';
 }
 
 export interface DownloadProgress {
@@ -81,6 +84,22 @@ export interface AppVersion {
   ffmpeg: string;
 }
 
+export interface AppPrefs {
+  defaultModelId: string;
+  timestampGranularity: 'segment' | '10s' | '30s' | '1min';
+  exportDirectory: string;
+}
+
+export interface StorageInfo {
+  modelsDir: string;
+  logsPath: string;
+  tempDir: string;
+  exportDirectory: string;
+  managedModelsBytes: number;
+  logBytes: number;
+  tempCacheBytes: number;
+}
+
 const on = <T,>(channel: string, cb: (payload: T) => void) => {
   const listener = (_event: unknown, payload: T) => cb(payload);
   ipcRenderer.on(channel, listener);
@@ -107,11 +126,14 @@ const api = {
   getFileInfo: (filePath: string) => ipcRenderer.invoke('wespr:file-info', filePath) as Promise<FileInfo>,
 
   openLogs: () => ipcRenderer.invoke('wespr:open-logs'),
+  openPath: (targetPath: string) => ipcRenderer.invoke('wespr:open-path', targetPath) as Promise<string>,
+  pickDirectory: () => ipcRenderer.invoke('wespr:pick-directory') as Promise<string | null>,
   clearCache: () => ipcRenderer.invoke('wespr:clear-cache') as Promise<{ freed: number }>,
   getVersion: () => ipcRenderer.invoke('wespr:get-version') as Promise<AppVersion>,
-  getPrefs: () => ipcRenderer.invoke('wespr:get-prefs') as Promise<Record<string, unknown>>,
-  setPrefs: (prefs: Record<string, unknown>) => ipcRenderer.invoke('wespr:set-prefs', prefs)
+  getPrefs: () => ipcRenderer.invoke('wespr:get-prefs') as Promise<AppPrefs>,
+  setPrefs: (prefs: Partial<AppPrefs>) => ipcRenderer.invoke('wespr:set-prefs', prefs) as Promise<AppPrefs>,
+  getStorageInfo: () => ipcRenderer.invoke('wespr:get-storage-info') as Promise<StorageInfo>,
+  getMediaSourceUrl: (filePath: string) => ipcRenderer.invoke('wespr:get-media-source-url', filePath) as Promise<string>
 };
 
 contextBridge.exposeInMainWorld('wespr', api);
-

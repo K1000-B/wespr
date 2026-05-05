@@ -35,6 +35,7 @@ type TranscriptionState = {
   start: () => Promise<void>;
   cancel: () => Promise<void>;
   bindIpc: () => () => void;
+  applyPrefs: (prefs: { defaultModelId?: string }) => void;
   reset: () => void;
 };
 
@@ -138,6 +139,17 @@ export const useTranscriptionStore = create<TranscriptionState>((set, get) => ({
       offResult();
       offError();
     };
+  },
+  applyPrefs: (prefs) => {
+    if (!prefs.defaultModelId) {
+      return;
+    }
+    set((state) => ({
+      options: {
+        ...state.options,
+        modelId: state.options.modelId || prefs.defaultModelId || ''
+      }
+    }));
   },
   reset: () =>
     set({

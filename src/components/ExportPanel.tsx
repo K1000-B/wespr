@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranscriptionStore } from '../store/transcription';
 import { useModelsStore } from '../store/models';
 import { formatBytes } from '../lib/utils';
@@ -24,6 +24,8 @@ export function ExportPanel({ onClose }: Props) {
   const [selected, setSelected] = useState<Array<(typeof FORMATS)[number][0]>>(['txt', 'srt']);
   const [includeTimestamps, setIncludeTimestamps] = useState(true);
   const [includeSpeakers, setIncludeSpeakers] = useState(true);
+  const [exportDirectory, setExportDirectory] = useState('');
+  const [timestampGranularity, setTimestampGranularity] = useState<'segment' | '10s' | '30s' | '1min'>('segment');
 
   const estimatedBytes = useMemo(() => {
     if (!result) {
@@ -31,6 +33,13 @@ export function ExportPanel({ onClose }: Props) {
     }
     return selected.length * Math.max(result.text.length, 1024);
   }, [result, selected]);
+
+  useEffect(() => {
+    void wespr.getPrefs().then((prefs) => {
+      setExportDirectory(prefs.exportDirectory);
+      setTimestampGranularity(prefs.timestampGranularity);
+    });
+  }, []);
 
   if (!result) {
     return null;
@@ -42,7 +51,8 @@ export function ExportPanel({ onClose }: Props) {
       formats: selected,
       includeTimestamps,
       includeSpeakers,
-      timestampGranularity: 'segment'
+      timestampGranularity,
+      destination: exportDirectory || undefined
     });
     onClose();
   };
@@ -135,6 +145,24 @@ export function ExportPanel({ onClose }: Props) {
             onChange={(event) => setIncludeSpeakers(event.target.checked)}
           />
         </label>
+
+        <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+          <span style={{ color: 'var(--text-secondary)' }}>Granularité des horodatages</span>
+          <select
+            className="input"
+            value={timestampGranularity}
+            onChange={(event) => setTimestampGranularity(event.target.value as typeof timestampGranularity)}
+          >
+            <option value="segment">Segment</option>
+            <option value="10s">Toutes les 10 s</option>
+            <option value="30s">Toutes les 30 s</option>
+            <option value="1min">Toutes les 1 min</option>
+          </select>
+        </div>
+
+        <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+          Dossier d’export: <span className="mono">{exportDirectory || 'Downloads'}</span>
+        </div>
 
         <button className="btn btn-primary btn-lg" onClick={handleExport} disabled={selected.length === 0}>
           Exporter {selected.length} fichiers · {formatBytes(estimatedBytes)}

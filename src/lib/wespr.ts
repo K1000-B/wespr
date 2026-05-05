@@ -1,10 +1,12 @@
 import type {
+  AppPrefs,
   AppVersion,
   DownloadProgress,
   FileInfo,
   Model,
   ProgressEvent,
   SaveOptions,
+  StorageInfo,
   TranscriptResult,
   TranscribeError,
   TranscribeOptions
@@ -38,16 +40,35 @@ const browserFallback: WesprApi = {
     throw new Error('Lecture de fichier indisponible hors Electron.');
   },
   openLogs: async () => {},
+  openPath: async (_targetPath: string) => '',
+  pickDirectory: async () => null,
   clearCache: async () => ({ freed: 0 }),
   getVersion: async (): Promise<AppVersion> => ({
     app: '1.0.0',
     whisperCpp: 'Mode navigateur',
     ffmpeg: 'Mode navigateur'
   }),
-  getPrefs: async () => ({}),
-  setPrefs: async (_prefs: Record<string, unknown>) => {}
+  getPrefs: async (): Promise<AppPrefs> => ({
+    defaultModelId: '',
+    timestampGranularity: 'segment',
+    exportDirectory: ''
+  }),
+  setPrefs: async (prefs: Partial<AppPrefs>) => ({
+    defaultModelId: prefs.defaultModelId ?? '',
+    timestampGranularity: prefs.timestampGranularity ?? 'segment',
+    exportDirectory: prefs.exportDirectory ?? ''
+  }),
+  getStorageInfo: async (): Promise<StorageInfo> => ({
+    modelsDir: '',
+    logsPath: '',
+    tempDir: '',
+    exportDirectory: '',
+    managedModelsBytes: 0,
+    logBytes: 0,
+    tempCacheBytes: 0
+  }),
+  getMediaSourceUrl: async (filePath: string) => filePath
 };
 
 export const wespr = window.wespr ?? browserFallback;
 export const hasNativeBridge = Boolean(window.wespr);
-

@@ -1,12 +1,14 @@
 /// <reference types="vite/client" />
 
 import type {
+  AppPrefs,
   AppVersion,
   DownloadProgress,
   FileInfo,
   Model,
   ProgressEvent,
   SaveOptions,
+  StorageInfo,
   TranscriptResult,
   TranscribeError,
   TranscribeOptions
@@ -30,13 +32,16 @@ declare global {
       saveTranscript: (result: TranscriptResult, opts: SaveOptions) => Promise<string[]>;
       getFileInfo: (path: string) => Promise<FileInfo>;
       openLogs: () => Promise<void>;
+      openPath: (targetPath: string) => Promise<string>;
+      pickDirectory: () => Promise<string | null>;
       clearCache: () => Promise<{ freed: number }>;
       getVersion: () => Promise<AppVersion>;
-      getPrefs: () => Promise<Record<string, unknown>>;
-      setPrefs: (prefs: Record<string, unknown>) => Promise<void>;
+      getPrefs: () => Promise<AppPrefs>;
+      setPrefs: (prefs: Partial<AppPrefs>) => Promise<AppPrefs>;
+      getStorageInfo: () => Promise<StorageInfo>;
+      getMediaSourceUrl: (filePath: string) => Promise<string>;
     };
   }
 }
 
 export {};
-

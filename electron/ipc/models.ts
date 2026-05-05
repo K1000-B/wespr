@@ -1,26 +1,27 @@
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'fs-extra';
-import { BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import {
   cancelDownload,
   deleteModel,
   downloadModel,
-  ensureStarterModels,
+  getModelsDir,
   listModels,
   pauseDownload
 } from '../services/modelManager';
-import { clearTempCache } from '../services/cleanup';
-import { ensureBundledBinaries, getLogPath, runCommand } from '../services/ffmpeg';
+import { clearTempCache, getTempCacheSize } from '../services/cleanup';
+import { ensureBundledBinaries, getLogDir, getLogPath, runCommand } from '../services/ffmpeg';
 import { JsonStore } from '../services/jsonStore';
 
 type AppPrefs = {
-  defaultModelId?: string;
-  timestampGranularity?: 'segment' | '10s' | '30s' | '1min';
-  exportDirectory?: string;
+  defaultModelId: string;
+  timestampGranularity: 'segment' | '10s' | '30s' | '1min';
+  exportDirectory: string;
 };
 
 const prefsStore = new JsonStore<AppPrefs>('preferences', {
+  defaultModelId: '',
   timestampGranularity: 'segment',
   exportDirectory: path.join(os.homedir(), 'Downloads')
 });
@@ -45,12 +46,49 @@ export function registerModelIpc() {
   ipcMain.handle('wespr:delete-model', async (_event, id: string) => deleteModel(id));
 
   ipcMain.handle('wespr:get-prefs', async () => prefsStore.getAll());
-  ipcMain.handle('wespr:set-prefs', async (_event, prefs: Record<string, unknown>) => {
-    await prefsStore.set(prefs as Partial<AppPrefs>);
+  ipcMain.handle('wespr:set-prefs', async (_event, prefs: Partial<AppPrefs>) => {
+    await prefsStore.set(prefs);
+    return prefsStore.getAll();
   });
 
-  ipcMain.handle('wespr:open-logs-dir', async () => shell.openPath(getLogPath()));
+  ipcMain.handle('wespr:pick-directory', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Choisir un dossier',
+      properties: ['openDirectory', 'createDirectory']
+    });
+    return result.canceled ? null : result.filePaths[0];
+  });
+
+  ipcMain.handle('wespr:open-path', async (_event, targetPath: string) => {
+    if (await fs.pathExists(targetPath)) {
+      const stat = await fs.stat(targetPath);
+      if (stat.isFile()) {
+        shell.showItemInFolder(targetPath);
+        return '';
+      }
+    }
+    return shell.openPath(targetPath);
+  });
+
   ipcMain.handle('wespr:clear-cache', async () => clearTempCache());
+  ipcMain.handle('wespr:get-storage-info', async () => {
+    const prefs = await prefsStore.getAll();
+    const models = await listModels();
+    const managedModelsBytes = models
+      .filter((model) => model.installed && model.managed)
+      .reduce((sum, model) => sum + model.size, 0);
+    const logBytes = (await fs.pathExists(getLogPath())) ? (await fs.stat(getLogPath())).size : 0;
+
+    return {
+      modelsDir: getModelsDir(),
+      logsPath: getLogPath(),
+      tempDir: app.getPath('temp'),
+      exportDirectory: prefs.exportDirectory,
+      managedModelsBytes,
+      logBytes,
+      tempCacheBytes: await getTempCacheSize()
+    };
+  });
 
   ipcMain.handle('wespr:get-version', async () => {
     const binaries = await ensureBundledBinaries();
@@ -79,13 +117,5 @@ export function registerModelIpc() {
     };
   });
 
-  ipcMain.handle('wespr:open-logs', async () => shell.openPath(getLogPath()));
-}
-
-export async function bootstrapModelsIfNeeded() {
-  await fs.ensureDir(path.dirname(getLogPath()));
-  await ensureStarterModels(
-    (message) => sendToRenderer('wespr:bootstrap-log', message),
-    (progress) => sendToRenderer('wespr:download-progress', progress)
-  );
+  ipcMain.handle('wespr:open-logs', async () => shell.openPath(getLogDir()));
 }
