@@ -3,7 +3,7 @@
 <br/>
 
 <img src="resources/icon.png" alt="WeSpR icon" width="96" height="96" />
-
+ 
 <h1>WeSpR</h1>
 
 <p><strong>Transcription audio et vidéo — 100% locale, 100% privée.</strong><br/>
