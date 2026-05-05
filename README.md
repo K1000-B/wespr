@@ -72,7 +72,7 @@ Zéro telemetry. Zéro analytics. Zéro réseau à l'usage. Les logs restent dan
 
 ### Téléchargement direct
 
-Téléchargez le dernier `.dmg` depuis la [page Releases](https://github.com/your-username/wespr/releases).
+Téléchargez le dernier `.dmg` depuis la [page Releases](https://github.com/K1000-B/wespr/releases).
 
 ```
 WeSpR-{version}-universal.dmg   →   Double-cliquez, glissez dans Applications.
@@ -122,7 +122,7 @@ Les modèles se téléchargent depuis [HuggingFace — ggerganov/whisper.cpp](ht
 
 ```bash
 # Cloner
-git clone https://github.com/your-username/wespr.git
+git clone https://github.com/K1000-B/wespr.git
 cd wespr
 
 # Installer les dépendances Node
@@ -172,7 +172,7 @@ Les contributions sont bienvenues. Lisez [`AGENTS.md`](AGENTS.md) avant d'ouvrir
 
 ```bash
 # Fork + clone
-gh repo fork your-username/wespr --clone
+gh repo fork K1000-B/wespr --clone
 cd wespr
 
 # Nouvelle branche
