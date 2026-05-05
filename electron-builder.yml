@@ -1,0 +1,36 @@
+appId: com.wespr.app
+productName: WeSpR
+copyright: Copyright © 2026 WeSpR Contributors
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  icon: resources/icon.icns
+
+dmg:
+  title: WeSpR
+  background: resources/dmg-background.png
+  window: { width: 600, height: 380 }
+  contents:
+    - { x: 160, y: 170, type: file }
+    - { x: 440, y: 170, type: link, path: /Applications }
+
+extraResources:
+  - from: resources/binaries/
+    to: binaries/
+    filter: ["**/*"]
+
+files:
+  - dist/
+  - dist-electron/
+  - node_modules/
+  - package.json
+
+asar: true
+asarUnpack:
+  - resources/binaries/**
+
