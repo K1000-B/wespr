@@ -64,13 +64,24 @@ export function getModelPath(modelId: string) {
   return path.join(getModelsDir(), `ggml-${modelId}.bin`);
 }
 
-async function isValidModelFile(filePath: string, expectedBytes: number) {
+async function isManagedModelFile(filePath: string, expectedBytes: number) {
   if (!(await fs.pathExists(filePath))) {
     return false;
   }
 
   const stat = await fs.stat(filePath);
   return Math.abs(stat.size - expectedBytes) <= 5_000_000;
+}
+
+async function isDetectedExternalModelFile(filePath: string, expectedBytes: number) {
+  if (!(await fs.pathExists(filePath))) {
+    return false;
+  }
+
+  const stat = await fs.stat(filePath);
+  const minimumBytes = Math.floor(expectedBytes * 0.85);
+  const maximumBytes = Math.ceil(expectedBytes * 1.15);
+  return stat.size >= minimumBytes && stat.size <= maximumBytes;
 }
 
 async function resolveInstalledModel(modelId: string) {
@@ -80,7 +91,10 @@ async function resolveInstalledModel(modelId: string) {
   }
 
   for (const candidate of getModelCandidates(modelId)) {
-    if (await isValidModelFile(candidate.path, model.size)) {
+    const valid = candidate.source === 'wespr'
+      ? await isManagedModelFile(candidate.path, model.size)
+      : await isDetectedExternalModelFile(candidate.path, model.size);
+    if (valid) {
       return candidate;
     }
   }
@@ -242,7 +256,7 @@ export async function downloadModel(
     throw toModelDownloadError(error, modelId);
   }
 
-  if (!(await isValidModelFile(destination, model.size))) {
+  if (!(await isManagedModelFile(destination, totalBytes))) {
     await fs.remove(destination);
     downloads.delete(modelId);
     throw new Error('Le fichier téléchargé est incomplet — relancez l’installation du modèle.');

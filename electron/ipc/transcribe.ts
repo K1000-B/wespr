@@ -1,6 +1,5 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { BrowserWindow, dialog, ipcMain } from 'electron';
 import {
   convertToMonoWav,
@@ -211,13 +210,16 @@ export function registerTranscribeIpc() {
         message: 'Assemblage final'
       });
 
-      const result = mergeChunks(
+      const merged = mergeChunks(
         chunks,
         fileInfo.duration,
         opts.modelId,
         Math.round((Date.now() - startedAt) / 1000)
       );
-      result.sourceFilePath = opts.filePath;
+      const result = {
+        ...merged,
+        sourceFilePath: opts.filePath
+      };
 
       sendToRenderer('wespr:progress', {
         step: 'cleanup',
@@ -260,5 +262,8 @@ export function registerTranscribeIpc() {
   ipcMain.handle('wespr:save-transcript', async (_event, result: TranscriptResult, opts: SaveOptions) =>
     exportTranscript(result, opts)
   );
-  ipcMain.handle('wespr:get-media-source-url', async (_event, filePath: string) => pathToFileURL(filePath).toString());
+  ipcMain.handle(
+    'wespr:get-media-source-url',
+    async (_event, filePath: string) => `wespr-media://local?path=${encodeURIComponent(filePath)}`
+  );
 }

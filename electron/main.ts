@@ -1,8 +1,21 @@
 import path from 'node:path';
-import { app, BrowserWindow, nativeTheme } from 'electron';
+import { pathToFileURL } from 'node:url';
+import { app, BrowserWindow, nativeTheme, net, protocol } from 'electron';
 import { ensureBundledBinaries, writeLog } from './services/ffmpeg';
 import { registerTranscribeIpc } from './ipc/transcribe';
 import { registerModelIpc } from './ipc/models';
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'wespr-media',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true
+    }
+  }
+]);
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -34,6 +47,17 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   nativeTheme.themeSource = 'dark';
+  protocol.handle('wespr-media', async (request) => {
+    const url = new URL(request.url);
+    const filePath = url.searchParams.get('path');
+    if (!filePath) {
+      return new Response('Chemin média manquant.', { status: 400 });
+    }
+    return net.fetch(pathToFileURL(filePath).toString(), {
+      headers: request.headers,
+      method: request.method
+    });
+  });
   await ensureBundledBinaries();
   registerTranscribeIpc();
   registerModelIpc();
