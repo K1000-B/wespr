@@ -13,6 +13,7 @@ mac:
     - target: zip
       arch: [universal]
   icon: resources/icon.icns
+  x64ArchFiles: Contents/Resources/binaries/**
 
 dmg:
   title: WeSpR

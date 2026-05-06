@@ -29,6 +29,8 @@ WeSpR transcrit vos fichiers audio et vidéo directement sur votre Mac. Rien ne 
 
 Glissez un fichier. Choisissez un modèle. Récupérez le texte.
 
+WeSpR prend aussi en charge l'import depuis une URL et les mémos vocaux locaux, avec suppression de l'historique et conservation optionnelle des médias.
+
 <br/>
 
 <table>
@@ -115,7 +117,6 @@ Les modèles se téléchargent depuis [HuggingFace — ggerganov/whisper.cpp](ht
 - Node.js 20+
 - Xcode Command Line Tools : `xcode-select --install`
 - CMake : `brew install cmake`
-- p7zip : `brew install p7zip`
 - GitHub CLI : `brew install gh`
 
 ### Setup
@@ -128,10 +129,15 @@ cd wespr
 # Installer les dépendances Node
 npm install
 
-# Compiler whisper-cli + télécharger ffmpeg statique
-# (prend ~10 min à la première exécution)
+# Préparer les binaires locaux nécessaires au bundle
+# (prend plusieurs minutes à la première exécution)
 npm run postinstall
+
+# Si le dossier resources/binaries/ est vide, exécutez aussi:
+npm run setup:binaries
 ```
+
+Le `.dmg` publié contient les binaires nécessaires. Le dossier `resources/binaries/` sert surtout à préparer les builds locaux avant `npm run dist`.
 
 ### Développement
 
@@ -142,7 +148,7 @@ npm run dev          # Electron + Vite en mode watch
 ### Build distribution
 
 ```bash
-npm run dist         # Génère dist/WeSpR-{version}-universal.dmg
+npm run dist         # Génère release/WeSpR-{version}-universal.dmg
 ```
 
 ---
