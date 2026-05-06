@@ -11,7 +11,7 @@ import {
   pauseDownload
 } from '../services/modelManager';
 import { clearTempCache, getTempCacheSize } from '../services/cleanup';
-import { ensureBundledBinaries, getLogDir, getLogPath, runCommand } from '../services/ffmpeg';
+import { ensureBundledBinaries, getLogDir, getLogPath, runCommand, writeLog } from '../services/ffmpeg';
 import { prefsStore } from '../services/prefs';
 import { clearDirectory, getPathSize, getRemoteMediaDir } from '../services/urlImport';
 import { getVoiceAudioSize, getVoiceSessionsDir, purgeVoiceAudio } from '../services/voiceSessions';
