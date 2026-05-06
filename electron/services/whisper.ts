@@ -17,7 +17,7 @@ export type WhisperChunkResult = {
   segments: WhisperSegment[];
 };
 
-export function transcribeChunk(
+export async function transcribeChunk(
   modelPath: string,
   chunkPath: string,
   outputPrefix: string,
@@ -25,70 +25,62 @@ export function transcribeChunk(
   translateToEn: boolean,
   diarize: boolean,
   onProgressMessage: (message: string) => void
-) {
-  return new Promise<{ result: WhisperChunkResult; child: ChildProcessWithoutNullStreams }>(
-    async (resolve, reject) => {
-      const binaries = await ensureBundledBinaries();
-      const args = [
-        '-m',
-        modelPath,
-        '-f',
-        chunkPath,
-        '-l',
-        language,
-        '-oj',
-        '-of',
-        outputPrefix
-      ];
+): Promise<{ result: WhisperChunkResult; child: ChildProcessWithoutNullStreams }> {
+  const binaries = await ensureBundledBinaries();
+  const args = [
+    '-m',
+    modelPath,
+    '-f',
+    chunkPath,
+    '-l',
+    language,
+    '-oj',
+    '-of',
+    outputPrefix
+  ];
 
-      if (translateToEn) {
-        args.push('-tr');
-      }
-      if (diarize) {
-        args.push('-tdrz');
-      }
+  if (translateToEn) {
+    args.push('-tr');
+  }
+  if (diarize) {
+    args.push('-tdrz');
+  }
 
-      const child = spawn(binaries.whisper, args);
-      const stderr: string[] = [];
+  return new Promise((resolve, reject) => {
+    const child = spawn(binaries.whisper, args);
+    const stderr: string[] = [];
 
-      child.stderr.on('data', (chunk) => {
-        const line = chunk.toString();
-        stderr.push(line);
+    child.stderr.on('data', (chunk) => {
+      const line = chunk.toString();
+      stderr.push(line);
+      onProgressMessage(line.trim());
+    });
+
+    child.stdout.on('data', (chunk) => {
+      const line = chunk.toString();
+      if (line.trim()) {
         onProgressMessage(line.trim());
-      });
+      }
+    });
 
-      child.stdout.on('data', (chunk) => {
-        const line = chunk.toString();
-        if (line.trim()) {
-          onProgressMessage(line.trim());
-        }
-      });
+    child.on('error', reject);
+    child.on('close', (code) => {
+      if (code !== 0) {
+        reject(
+          Object.assign(new Error('La transcription a échoué.'), {
+            code,
+            stderr: stderr.join('')
+          })
+        );
+        return;
+      }
 
-      child.on('error', reject);
-      child.on('close', async (code) => {
-        if (code !== 0) {
-          reject(
-            Object.assign(new Error('La transcription a échoué.'), {
-              code,
-              stderr: stderr.join('')
-            })
-          );
-          return;
-        }
-
-        try {
-          const jsonPath = `${outputPrefix}.json`;
-          const payload = await fs.readJson(jsonPath);
-          resolve({
-            child,
-            result: parseWhisperJson(payload)
-          });
-        } catch (error) {
-          reject(error);
-        }
-      });
-    }
-  );
+      const jsonPath = `${outputPrefix}.json`;
+      fs.readJson(jsonPath).then((payload) => {
+        resolve({ child, result: parseWhisperJson(payload as Record<string, unknown>) });
+      }).catch(reject);
+    });
+  });
 }
 
 function parseWhisperJson(payload: Record<string, unknown>): WhisperChunkResult {
