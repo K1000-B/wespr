@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { spawn, ChildProcessWithoutNullStreams } from 'node:child_process';
-import { ensureBundledBinaries } from './ffmpeg';
+import { ensureBundledBinaries, writeLog } from './ffmpeg';
 
 export type WhisperSegment = {
   start: number;
@@ -46,9 +46,23 @@ export async function transcribeChunk(
     args.push('-tdrz');
   }
 
+  void writeLog(`whisper: spawn ${path.basename(binaries.whisper)} -m ${path.basename(modelPath)} -f ${path.basename(chunkPath)}`);
+
   return new Promise((resolve, reject) => {
     const child = spawn(binaries.whisper, args);
     const stderr: string[] = [];
+
+    // Timeout de sécurité : 10 min par chunk de 55 s est largement suffisant.
+    // Si whisper-cli ne répond pas, on le tue plutôt que de bloquer indéfiniment.
+    const watchdog = setTimeout(() => {
+      child.kill('SIGKILL');
+      const err = Object.assign(
+        new Error('La transcription a pris trop de temps — le processus a été interrompu.'),
+        { code: -1, stderr: stderr.join('') }
+      );
+      void writeLog(`whisper: timeout killed after 10 min for ${path.basename(chunkPath)}`);
+      reject(err);
+    }, 10 * 60_000);
 
     child.stderr.on('data', (chunk) => {
       const line = chunk.toString();
@@ -63,8 +77,16 @@ export async function transcribeChunk(
       }
     });
 
-    child.on('error', reject);
+    child.on('error', (err) => {
+      clearTimeout(watchdog);
+      void writeLog(`whisper: spawn error: ${err.message}`);
+      reject(err);
+    });
+
     child.on('close', (code) => {
+      clearTimeout(watchdog);
+      void writeLog(`whisper: close code=${code} for ${path.basename(chunkPath)}`);
+
       if (code !== 0) {
         reject(
           Object.assign(new Error('La transcription a échoué.'), {
@@ -78,7 +100,10 @@ export async function transcribeChunk(
       const jsonPath = `${outputPrefix}.json`;
       fs.readJson(jsonPath).then((payload) => {
         resolve({ child, result: parseWhisperJson(payload as Record<string, unknown>) });
-      }).catch(reject);
+      }).catch((err: unknown) => {
+        void writeLog(`whisper: readJson failed for ${jsonPath}: ${String(err)}`);
+        reject(err);
+      });
     });
   });
 }

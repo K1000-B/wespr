@@ -186,6 +186,7 @@ async function runPipeline(
   const tempDir = await ensureTempDir(jobId);
   const fileInfo = await getFileInfo(filePath);
   const wavPath = path.join(tempDir, 'audio.wav');
+  await writeLog(`pipeline: start job=${jobId} file=${path.basename(filePath)} duration=${fileInfo.duration}s model=${options.modelId}`);
 
   try {
     sendProgress({
@@ -201,6 +202,7 @@ async function runPipeline(
         message
       });
     });
+    await writeLog(`pipeline: converting done`);
 
     if (cancelled) {
       throw new Error('Transcription annulée. Le fichier n’a pas été modifié.');
@@ -220,8 +222,10 @@ async function runPipeline(
         message: `${total} segment${total > 1 ? 's' : ''} prêt${total > 1 ? 's' : ''}`
       });
     });
+    await writeLog(`pipeline: segmenting done chunks=${chunkPaths.length}`);
 
     const modelPath = await resolveModelPath(options.modelId);
+    await writeLog(`pipeline: model resolved path=${modelPath}`);
 
     const chunks = [];
     for (let index = 0; index < chunkPaths.length; index += 1) {
@@ -238,6 +242,7 @@ async function runPipeline(
       });
 
       const outputPrefix = readChunkOutputPath(tempDir, index);
+      await writeLog(`pipeline: transcribing chunk ${index + 1}/${chunkPaths.length}`);
       const { result } = await transcribeChunk(
         modelPath,
         chunkPaths[index],
@@ -256,6 +261,7 @@ async function runPipeline(
         }
       );
       chunks.push(result);
+      await writeLog(`pipeline: chunk ${index + 1} done segments=${result.segments.length}`);
     }
 
     sendProgress({
@@ -292,6 +298,7 @@ async function runPipeline(
       message: 'Transcript prêt'
     });
 
+    await writeLog(`pipeline: done total=${Math.round((Date.now() - startedAt) / 1000)}s`);
     return result;
   } catch (error) {
     const payload = normalizeError(error);
