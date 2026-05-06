@@ -160,8 +160,29 @@ async function resolveInstalledModel(modelId: string) {
   return null;
 }
 
+async function resolveInstalledModelOffline(modelId: string) {
+  // Résolution hors ligne : utilise le cache déjà chargé ou les modèles statiques.
+  // Évite toute requête réseau pendant la transcription.
+  const catalog = cachedCatalog ?? STATIC_MODELS;
+  const model = catalog.find((entry) => entry.id === modelId);
+  if (!model) {
+    return null;
+  }
+
+  for (const candidate of getModelCandidates(modelId)) {
+    const valid = candidate.source === 'wespr'
+      ? await isManagedModelFile(candidate.path, model.size)
+      : await isDetectedExternalModelFile(candidate.path, model.size);
+    if (valid) {
+      return candidate;
+    }
+  }
+
+  return null;
+}
+
 export async function resolveModelPath(modelId: string) {
-  const installed = await resolveInstalledModel(modelId);
+  const installed = await resolveInstalledModelOffline(modelId);
   return installed?.path ?? getModelPath(modelId);
 }
 
