@@ -1,5 +1,5 @@
 import fs from 'fs-extra';
-import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, dialog, ipcMain, shell, systemPreferences } from 'electron';
 import type { AppPrefs } from '../preload';
 import {
   cancelDownload,
@@ -115,4 +115,8 @@ export function registerModelIpc() {
   });
 
   ipcMain.handle('wespr:open-logs', async () => shell.openPath(getLogDir()));
+
+  ipcMain.handle('wespr:request-mic-access', async () => {
+    return systemPreferences.askForMediaAccess('microphone');
+  });
 }

@@ -244,7 +244,8 @@ const api = {
   getPrefs: () => ipcRenderer.invoke('wespr:get-prefs') as Promise<AppPrefs>,
   setPrefs: (prefs: Partial<AppPrefs>) => ipcRenderer.invoke('wespr:set-prefs', prefs) as Promise<AppPrefs>,
   getStorageInfo: () => ipcRenderer.invoke('wespr:get-storage-info') as Promise<StorageInfo>,
-  getMediaSourceUrl: (filePath: string) => ipcRenderer.invoke('wespr:get-media-source-url', filePath) as Promise<string>
+  getMediaSourceUrl: (filePath: string) => ipcRenderer.invoke('wespr:get-media-source-url', filePath) as Promise<string>,
+  requestMicAccess: () => ipcRenderer.invoke('wespr:request-mic-access') as Promise<boolean>
 };
 
 contextBridge.exposeInMainWorld('wespr', api);

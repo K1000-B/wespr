@@ -56,7 +56,13 @@ export function VoicePanel() {
       setSelectedMicId(value.defaultMicrophoneId);
     });
     void refreshSessions();
-    void refreshDevices();
+    void wespr.requestMicAccess().then((granted) => {
+      if (granted) {
+        void refreshDevices();
+      } else {
+        setVoiceError('Accès au micro refusé — autorisez WeSpR dans Réglages système → Confidentialité → Microphone.');
+      }
+    });
 
     return () => {
       cleanupCapture();
