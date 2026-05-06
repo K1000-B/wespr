@@ -14,6 +14,9 @@ mac:
       arch: [universal]
   icon: resources/icon.icns
   x64ArchFiles: Contents/Resources/binaries/**
+  extendInfo:
+    NSMicrophoneUsageDescription: WeSpR a besoin du micro pour enregistrer votre voix. L'audio reste sur votre Mac.
+    NSCameraUsageDescription: WeSpR n'utilise pas la caméra.
 
 dmg:
   title: WeSpR
