@@ -201,8 +201,24 @@ Les modèles Whisper sont distribués sous licence MIT par OpenAI.
 ffmpeg est distribué sous LGPL 2.1+.
 whisper.cpp est distribué sous MIT par Georgi Gerganov.
 
+## commande quarantaine
+```bash
+
+xattr -dr com.apple.quarantine /Applications/WeSpR.app
+
+xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/ffmpeg
+
+xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/ffprobe
+
+xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/whisper-cli-arm64
+
+xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/yt-dlp
+````
+
 ---
 
 <div align="center">
 <sub>Fait avec ♥ et whisper.cpp · Aucune donnée ne quitte votre Mac</sub>
 </div>
+
+
