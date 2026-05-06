@@ -7,9 +7,10 @@ type Props = {
 };
 
 export function ModelRow({ model }: Props) {
-  const { progress, pausedIds, download, deleteModel, cancel } = useModelsStore();
+  const { progress, pausedIds, recentlyInstalledIds, download, deleteModel, cancel } = useModelsStore();
   const current = progress[model.id];
   const isPaused = pausedIds.includes(model.id);
+  const isInstalled = model.installed || recentlyInstalledIds.includes(model.id);
 
   return (
     <div
@@ -38,7 +39,7 @@ export function ModelRow({ model }: Props) {
               width: 10,
               height: 4,
               borderRadius: 'var(--r-pill)',
-              background: index < (model.id.includes('large') ? 4 : 3) ? 'var(--violet-400)' : 'var(--bg-3)'
+              background: index < model.qualityScore ? 'var(--violet-400)' : 'var(--bg-3)'
             }}
           />
         ))}
@@ -57,7 +58,7 @@ export function ModelRow({ model }: Props) {
           ) : (
             <span className="pill pill-info">En cours</span>
           )
-        ) : model.installed ? (
+        ) : isInstalled ? (
           model.managed ? (
             <button className="btn btn-ghost btn-sm" onClick={() => deleteModel(model.id)}>
               Supprimer

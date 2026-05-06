@@ -19,10 +19,10 @@ export function Result() {
         <span className="mono">{formatDuration(result.duration)}</span>
         <span style={{ color: 'var(--text-secondary)' }}>Langue détectée: {result.language}</span>
         <span style={{ color: 'var(--text-secondary)' }}>Modèle: {result.modelUsed}</span>
+        {result.sourceLabel ? <span style={{ color: 'var(--text-secondary)' }}>Source: {result.sourceLabel}</span> : null}
       </div>
       <TranscriptViewer onExport={() => setShowExport(true)} />
       {showExport ? <ExportPanel onClose={() => setShowExport(false)} /> : null}
     </div>
   );
 }
-

@@ -1,7 +1,33 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-export interface TranscribeOptions {
+export type SourceKind = 'file' | 'url' | 'voice';
+export type VoiceMode = 'memo' | 'live';
+export type UrlSourceKind = 'youtube' | 'm3u8';
+
+export interface FileTranscribeSource {
+  kind: 'file';
   filePath: string;
+}
+
+export interface UrlTranscribeSource {
+  kind: 'url';
+  url: string;
+  sourceType: UrlSourceKind;
+  referer?: string;
+  keepMedia?: boolean;
+  destinationDirectory?: string;
+}
+
+export interface VoiceTranscribeSource {
+  kind: 'voice';
+  sessionId: string;
+  filePath: string;
+}
+
+export type TranscribeSource = FileTranscribeSource | UrlTranscribeSource | VoiceTranscribeSource;
+
+export interface TranscribeOptions {
+  source: TranscribeSource;
   modelId: string;
   language: string | 'auto';
   translateToEn: boolean;
@@ -9,7 +35,7 @@ export interface TranscribeOptions {
 }
 
 export interface ProgressEvent {
-  step: 'converting' | 'segmenting' | 'transcribing' | 'merging' | 'cleanup';
+  step: 'downloading' | 'converting' | 'segmenting' | 'transcribing' | 'merging' | 'cleanup';
   pct: number;
   chunk?: number;
   totalChunks?: number;
@@ -17,20 +43,25 @@ export interface ProgressEvent {
   eta?: number;
 }
 
+export interface TranscriptSegment {
+  start: number;
+  end: number;
+  text: string;
+  speaker?: string;
+  confidence?: number;
+}
+
 export interface TranscriptResult {
   text: string;
-  segments: Array<{
-    start: number;
-    end: number;
-    text: string;
-    speaker?: string;
-    confidence?: number;
-  }>;
+  segments: TranscriptSegment[];
   language: string;
   duration: number;
   modelUsed: string;
   processingTime: number;
   sourceFilePath: string;
+  sourceKind: SourceKind;
+  sourceLabel?: string;
+  mediaFilePath?: string;
 }
 
 export interface TranscribeError {
@@ -52,6 +83,9 @@ export interface Model {
   source: 'wespr' | 'external';
   downloadable: boolean;
   note?: string;
+  summary: string;
+  speedScore: number;
+  qualityScore: number;
 }
 
 export interface DownloadProgress {
@@ -92,6 +126,11 @@ export interface AppPrefs {
   defaultModelId: string;
   timestampGranularity: 'segment' | '10s' | '30s' | '1min';
   exportDirectory: string;
+  keepRemoteMedia: boolean;
+  remoteMediaDirectory: string;
+  keepVoiceAudio: boolean;
+  defaultMicrophoneId: string;
+  defaultVoiceMode: VoiceMode;
 }
 
 export interface StorageInfo {
@@ -99,9 +138,62 @@ export interface StorageInfo {
   logsPath: string;
   tempDir: string;
   exportDirectory: string;
+  remoteMediaDir: string;
+  voiceSessionsDir: string;
   managedModelsBytes: number;
   logBytes: number;
   tempCacheBytes: number;
+  remoteMediaBytes: number;
+  voiceAudioBytes: number;
+}
+
+export interface UrlSourceInput {
+  url: string;
+  sourceType: UrlSourceKind;
+  referer?: string;
+}
+
+export interface UrlPreview {
+  sourceType: UrlSourceKind;
+  url: string;
+  title: string;
+  creator?: string;
+  duration?: number;
+  thumbnailUrl?: string;
+  description?: string;
+}
+
+export interface VoiceSessionSummary {
+  id: string;
+  title: string;
+  createdAt: string;
+  duration: number;
+  wordCount: number;
+  mode: VoiceMode;
+  transcriptPath: string;
+  audioPath?: string;
+  previewText: string;
+}
+
+export interface VoiceSessionDetail {
+  session: VoiceSessionSummary;
+  transcript: TranscriptResult;
+}
+
+export interface VoiceSessionStartInput {
+  mode: VoiceMode;
+  keepAudio: boolean;
+}
+
+export interface VoiceChunkInput {
+  sessionId: string;
+  pcm16: number[];
+}
+
+export interface VoiceLiveState {
+  committedText: string;
+  partialText: string;
+  updatedAt: string;
 }
 
 const on = <T,>(channel: string, cb: (payload: T) => void) => {
@@ -129,11 +221,25 @@ const api = {
   saveTranscript: (result: TranscriptResult, opts: SaveOptions) =>
     ipcRenderer.invoke('wespr:save-transcript', result, opts) as Promise<string[]>,
   getFileInfo: (filePath: string) => ipcRenderer.invoke('wespr:file-info', filePath) as Promise<FileInfo>,
+  resolveUrlSource: (input: UrlSourceInput) => ipcRenderer.invoke('wespr:resolve-url-source', input) as Promise<UrlPreview>,
+
+  startVoiceSession: (input: VoiceSessionStartInput) =>
+    ipcRenderer.invoke('wespr:start-voice-session', input) as Promise<{ sessionId: string }>,
+  appendVoiceChunk: (input: VoiceChunkInput) =>
+    ipcRenderer.invoke('wespr:append-voice-chunk', input) as Promise<VoiceLiveState | null>,
+  finalizeVoiceSession: (sessionId: string, options: Omit<TranscribeOptions, 'source'>) =>
+    ipcRenderer.invoke('wespr:finalize-voice-session', sessionId, options) as Promise<VoiceSessionDetail>,
+  discardVoiceSession: (sessionId: string) => ipcRenderer.invoke('wespr:discard-voice-session', sessionId),
+  listVoiceSessions: () => ipcRenderer.invoke('wespr:list-voice-sessions') as Promise<VoiceSessionSummary[]>,
+  getVoiceSession: (sessionId: string) => ipcRenderer.invoke('wespr:get-voice-session', sessionId) as Promise<VoiceSessionDetail>,
+  deleteVoiceSession: (sessionId: string) => ipcRenderer.invoke('wespr:delete-voice-session', sessionId) as Promise<void>,
 
   openLogs: () => ipcRenderer.invoke('wespr:open-logs'),
   openPath: (targetPath: string) => ipcRenderer.invoke('wespr:open-path', targetPath) as Promise<string>,
   pickDirectory: () => ipcRenderer.invoke('wespr:pick-directory') as Promise<string | null>,
   clearCache: () => ipcRenderer.invoke('wespr:clear-cache') as Promise<{ freed: number }>,
+  purgeRemoteMedia: () => ipcRenderer.invoke('wespr:purge-remote-media') as Promise<{ freed: number }>,
+  purgeVoiceAudio: () => ipcRenderer.invoke('wespr:purge-voice-audio') as Promise<{ freed: number }>,
   getVersion: () => ipcRenderer.invoke('wespr:get-version') as Promise<AppVersion>,
   getPrefs: () => ipcRenderer.invoke('wespr:get-prefs') as Promise<AppPrefs>,
   setPrefs: (prefs: Partial<AppPrefs>) => ipcRenderer.invoke('wespr:set-prefs', prefs) as Promise<AppPrefs>,

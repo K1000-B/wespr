@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import { app } from 'electron';
 
-export class JsonStore<T extends Record<string, unknown>> {
+export class JsonStore<T extends object> {
   private readonly filePath: string;
   private readonly defaults: T;
 
@@ -37,4 +37,3 @@ export class JsonStore<T extends Record<string, unknown>> {
     await fs.writeJson(this.filePath, value, { spaces: 2 });
   }
 }
-

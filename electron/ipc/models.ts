@@ -1,7 +1,6 @@
-import os from 'node:os';
-import path from 'node:path';
 import fs from 'fs-extra';
 import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
+import type { AppPrefs } from '../preload';
 import {
   cancelDownload,
   deleteModel,
@@ -13,19 +12,9 @@ import {
 } from '../services/modelManager';
 import { clearTempCache, getTempCacheSize } from '../services/cleanup';
 import { ensureBundledBinaries, getLogDir, getLogPath, runCommand } from '../services/ffmpeg';
-import { JsonStore } from '../services/jsonStore';
-
-type AppPrefs = {
-  defaultModelId: string;
-  timestampGranularity: 'segment' | '10s' | '30s' | '1min';
-  exportDirectory: string;
-};
-
-const prefsStore = new JsonStore<AppPrefs>('preferences', {
-  defaultModelId: '',
-  timestampGranularity: 'segment',
-  exportDirectory: path.join(os.homedir(), 'Downloads')
-});
+import { prefsStore } from '../services/prefs';
+import { clearDirectory, getPathSize, getRemoteMediaDir } from '../services/urlImport';
+import { getVoiceAudioSize, getVoiceSessionsDir, purgeVoiceAudio } from '../services/voiceSessions';
 
 function sendToRenderer(channel: string, payload: unknown) {
   BrowserWindow.getAllWindows().forEach((window) => {
@@ -73,6 +62,8 @@ export function registerModelIpc() {
   });
 
   ipcMain.handle('wespr:clear-cache', async () => clearTempCache());
+  ipcMain.handle('wespr:purge-remote-media', async () => clearDirectory(getRemoteMediaDir()));
+  ipcMain.handle('wespr:purge-voice-audio', async () => purgeVoiceAudio());
   ipcMain.handle('wespr:get-storage-info', async () => {
     const prefs = await prefsStore.getAll();
     const models = await listModels();
@@ -86,9 +77,13 @@ export function registerModelIpc() {
       logsPath: getLogPath(),
       tempDir: app.getPath('temp'),
       exportDirectory: prefs.exportDirectory,
+      remoteMediaDir: getRemoteMediaDir(),
+      voiceSessionsDir: getVoiceSessionsDir(),
       managedModelsBytes,
       logBytes,
-      tempCacheBytes: await getTempCacheSize()
+      tempCacheBytes: await getTempCacheSize(),
+      remoteMediaBytes: await getPathSize(getRemoteMediaDir()),
+      voiceAudioBytes: await getVoiceAudioSize()
     };
   });
 

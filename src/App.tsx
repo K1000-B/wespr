@@ -30,8 +30,8 @@ function PageSwitcher() {
 }
 
 export default function App() {
-  const { page, setPage, bindIpc, reset, applyPrefs } = useTranscriptionStore();
-  const { refresh, bindProgress } = useModelsStore();
+  const { page, setPage, bindIpc, reset, applyPrefs, sourceView, autoSelectModel, options } = useTranscriptionStore();
+  const { refresh, bindProgress, models } = useModelsStore();
 
   useEffect(() => {
     if (!hasNativeBridge) {
@@ -64,7 +64,26 @@ export default function App() {
     };
   }, [applyPrefs, bindIpc, bindProgress, refresh]);
 
-  const pageLabel = page === 'home' ? 'Nouvelle transcription' : page === 'result' ? 'Résultat' : 'Réglages';
+  useEffect(() => {
+    if (options.modelId) {
+      return;
+    }
+    const installed = models.filter((model) => model.installed);
+    if (installed.length === 0) {
+      return;
+    }
+    autoSelectModel(models);
+  }, [autoSelectModel, models, options.modelId]);
+
+  const pageLabel = page === 'home'
+    ? sourceView === 'file'
+      ? 'Un fichier'
+      : sourceView === 'url'
+        ? 'Depuis une URL'
+        : 'Ma voix'
+    : page === 'result'
+      ? 'Résultat'
+      : 'Réglages';
 
   return (
     <div className="app-window">

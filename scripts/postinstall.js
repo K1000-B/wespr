@@ -24,4 +24,5 @@ function run(name, script) {
 }
 
 run('ffmpeg statique', 'download-ffmpeg.sh');
+run('yt-dlp', 'download-ytdlp.sh');
 run('whisper-cli (compile)', 'build-whisper.sh');

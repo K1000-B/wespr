@@ -7,10 +7,11 @@ type Props = {
 };
 
 export function ModelCard({ model }: Props) {
-  const { progress, pausedIds, download, deleteModel, pause, cancel } = useModelsStore();
+  const { progress, pausedIds, recentlyInstalledIds, download, deleteModel, pause, cancel } = useModelsStore();
   const current = progress[model.id];
   const isDownloading = Boolean(current);
   const isPaused = pausedIds.includes(model.id);
+  const isInstalled = model.installed || recentlyInstalledIds.includes(model.id);
   const recommended = Boolean(model.default);
 
   return (
@@ -39,7 +40,7 @@ export function ModelCard({ model }: Props) {
             {model.lang === 'en' ? 'Anglais optimisé' : 'Multilingue'} · {formatBytes(model.size)}
           </div>
         </div>
-        {model.installed ? (
+        {isInstalled ? (
           <span className="pill pill-success">Installé</span>
         ) : isDownloading ? (
           <span className="pill pill-info">Téléchargement</span>
@@ -48,13 +49,15 @@ export function ModelCard({ model }: Props) {
         )}
       </div>
 
-      {model.installed ? (
+      {isInstalled ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
           {model.managed ? 'Installé par WeSpR' : 'Détecté dans un dossier existant'}
         </div>
       ) : model.note ? (
         <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>{model.note}</div>
       ) : null}
+
+      <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>{model.summary}</div>
 
       <div style={{ display: 'flex', gap: 6 }}>
         {Array.from({ length: 5 }, (_, index) => (
@@ -64,7 +67,7 @@ export function ModelCard({ model }: Props) {
               width: 10,
               height: 10,
               borderRadius: '50%',
-              background: index < (model.id.includes('large') ? 2 : 4) ? 'var(--success)' : 'var(--bg-3)'
+              background: index < model.speedScore ? 'var(--success)' : 'var(--bg-3)'
             }}
           />
         ))}
@@ -76,10 +79,15 @@ export function ModelCard({ model }: Props) {
               width: 10,
               height: 10,
               borderRadius: '50%',
-              background: index < (model.id.includes('large') ? 5 : 4) ? 'var(--violet-400)' : 'var(--bg-3)'
+              background: index < model.qualityScore ? 'var(--violet-400)' : 'var(--bg-3)'
             }}
           />
         ))}
+      </div>
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+        <span>Vert = vitesse</span>
+        <span>Violet = précision</span>
       </div>
 
       {isDownloading ? (
@@ -113,7 +121,7 @@ export function ModelCard({ model }: Props) {
             </div>
           </div>
         </>
-      ) : model.installed ? (
+      ) : isInstalled ? (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="pill pill-success">Prêt pour la transcription</span>
           {model.managed ? (

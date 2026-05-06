@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useTranscriptionStore } from '../store/transcription';
 
 const STEPS = [
+  ['downloading', 'Téléchargement de l’audio', 'Récupération du média distant si nécessaire'],
   ['converting', 'Préparation du fichier', 'Conversion en 16 kHz mono · audio extrait'],
   ['segmenting', 'Chargement du modèle Whisper', 'Exécuté entièrement sur votre Mac'],
   ['transcribing', 'Transcription en cours…', 'Segment X/N · langue détectée · confiance X%'],
@@ -126,4 +127,3 @@ export function ProgressPanel() {
     </div>
   );
 }
-

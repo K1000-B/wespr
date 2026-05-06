@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
-import { app, BrowserWindow, nativeTheme, protocol } from 'electron';
+import { app, BrowserWindow, nativeImage, nativeTheme, protocol } from 'electron';
 import { ensureBundledBinaries, writeLog } from './services/ffmpeg';
 import { registerTranscribeIpc } from './ipc/transcribe';
 import { registerModelIpc } from './ipc/models';
@@ -21,7 +21,10 @@ protocol.registerSchemesAsPrivileged([
 
 let mainWindow: BrowserWindow | null = null;
 
+app.setName('WeSpR');
+
 function createWindow() {
+  const appIconPath = resolveWindowIconPath();
   mainWindow = new BrowserWindow({
     width: 1320,
     height: 860,
@@ -30,6 +33,7 @@ function createWindow() {
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 16, y: 12 },
     backgroundColor: '#0e0d12',
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -49,6 +53,7 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   nativeTheme.themeSource = 'dark';
+  applyDockIcon();
   protocol.handle('wespr-media', async (request) => {
     const url = new URL(request.url);
     const filePath = url.searchParams.get('path');
@@ -139,4 +144,32 @@ function guessMediaType(filePath: string) {
     '.webm': 'video/webm'
   };
   return types[ext] ?? 'application/octet-stream';
+}
+
+function resolveAppIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.icns')
+    : path.join(app.getAppPath(), 'resources', 'icon.icns');
+}
+
+function resolveWindowIconPath() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.join(app.getAppPath(), 'resources', 'icon.png');
+}
+
+function applyDockIcon() {
+  if (process.platform !== 'darwin') {
+    return;
+  }
+
+  const iconPath = resolveWindowIconPath();
+  if (!fs.existsSync(iconPath)) {
+    return;
+  }
+
+  const image = nativeImage.createFromPath(iconPath);
+  if (!image.isEmpty()) {
+    app.dock.setIcon(image);
+  }
 }

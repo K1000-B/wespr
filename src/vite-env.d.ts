@@ -12,7 +12,14 @@ import type {
   StorageInfo,
   TranscriptResult,
   TranscribeError,
-  TranscribeOptions
+  TranscribeOptions,
+  UrlPreview,
+  UrlSourceInput,
+  VoiceChunkInput,
+  VoiceLiveState,
+  VoiceSessionDetail,
+  VoiceSessionStartInput,
+  VoiceSessionSummary
 } from '../electron/preload';
 
 declare global {
@@ -33,10 +40,23 @@ declare global {
       openFile: () => Promise<string | null>;
       saveTranscript: (result: TranscriptResult, opts: SaveOptions) => Promise<string[]>;
       getFileInfo: (path: string) => Promise<FileInfo>;
+      resolveUrlSource: (input: UrlSourceInput) => Promise<UrlPreview>;
+      startVoiceSession: (input: VoiceSessionStartInput) => Promise<{ sessionId: string }>;
+      appendVoiceChunk: (input: VoiceChunkInput) => Promise<VoiceLiveState | null>;
+      finalizeVoiceSession: (
+        sessionId: string,
+        options: Omit<TranscribeOptions, 'source'>
+      ) => Promise<VoiceSessionDetail>;
+      discardVoiceSession: (sessionId: string) => Promise<void>;
+      listVoiceSessions: () => Promise<VoiceSessionSummary[]>;
+      getVoiceSession: (sessionId: string) => Promise<VoiceSessionDetail>;
+      deleteVoiceSession: (sessionId: string) => Promise<void>;
       openLogs: () => Promise<void>;
       openPath: (targetPath: string) => Promise<string>;
       pickDirectory: () => Promise<string | null>;
       clearCache: () => Promise<{ freed: number }>;
+      purgeRemoteMedia: () => Promise<{ freed: number }>;
+      purgeVoiceAudio: () => Promise<{ freed: number }>;
       getVersion: () => Promise<AppVersion>;
       getPrefs: () => Promise<AppPrefs>;
       setPrefs: (prefs: Partial<AppPrefs>) => Promise<AppPrefs>;

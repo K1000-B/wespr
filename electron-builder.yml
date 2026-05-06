@@ -2,6 +2,9 @@ appId: com.wespr.app
 productName: WeSpR
 copyright: Copyright © 2026 WeSpR Contributors
 
+directories:
+  output: release
+
 mac:
   category: public.app-category.productivity
   target:
@@ -25,12 +28,13 @@ extraResources:
     filter: ["**/*"]
 
 files:
-  - dist/
-  - dist-electron/
-  - node_modules/
+  - dist/**
+  - "!dist/mac-universal*/**"
+  - "!dist/builder-debug.yml"
+  - dist-electron/**
+  - node_modules/**
   - package.json
 
 asar: true
 asarUnpack:
   - resources/binaries/**
-

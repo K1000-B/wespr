@@ -51,7 +51,7 @@ export async function ensureBundledBinaries() {
 
   await fs.ensureDir(binDir);
 
-  const candidates = ['ffmpeg', 'ffprobe', 'whisper-cli', 'whisper-cli-arm64', 'whisper-cli-x64'];
+  const candidates = ['ffmpeg', 'ffprobe', 'whisper-cli', 'whisper-cli-arm64', 'whisper-cli-x64', 'yt-dlp'];
   for (const file of candidates) {
     const from = path.join(sourceDir, file);
     if (await fs.pathExists(from)) {
@@ -74,7 +74,8 @@ export async function ensureBundledBinaries() {
   return {
     ffmpeg: devOverrides?.ffmpeg || path.join(binDir, 'ffmpeg'),
     ffprobe: devOverrides?.ffprobe || path.join(binDir, 'ffprobe'),
-    whisper: devOverrides?.whisper || path.join(binDir, 'whisper-cli')
+    whisper: devOverrides?.whisper || path.join(binDir, 'whisper-cli'),
+    ytDlp: path.join(binDir, 'yt-dlp')
   };
 }
 

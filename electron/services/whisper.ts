@@ -98,19 +98,18 @@ function parseWhisperJson(payload: Record<string, unknown>): WhisperChunkResult 
       ? payload.segments
       : [];
 
+  let currentSpeakerIndex = 1;
   const normalized = segments.map((segment) => {
     const current = segment as Record<string, unknown>;
     const offsets =
       typeof current.offsets === 'object' && current.offsets !== null
         ? (current.offsets as Record<string, unknown>)
         : {};
-    const speaker = typeof current.speaker === 'string'
-      ? current.speaker
-      : typeof current.speaker_turn_next === 'boolean' && current.speaker_turn_next
-        ? 'LOCUTEUR 2'
-        : undefined;
+    const explicitSpeaker = typeof current.speaker === 'string' ? current.speaker.trim() : '';
+    const hasTurnChange = typeof current.speaker_turn_next === 'boolean' && current.speaker_turn_next;
+    const speaker = explicitSpeaker || `LOCUTEUR ${currentSpeakerIndex}`;
 
-    return {
+    const normalizedSegment = {
       start: Number(offsets.from ?? current.t0 ?? current.start ?? 0) / 1000,
       end: Number(offsets.to ?? current.t1 ?? current.end ?? 0) / 1000,
       text: String(current.text ?? '').trim(),
@@ -121,6 +120,12 @@ function parseWhisperJson(payload: Record<string, unknown>): WhisperChunkResult 
           ? Math.max(0, Math.min(1, Number(current.avg_logprob) + 1))
           : undefined
     };
+
+    if (!explicitSpeaker && hasTurnChange) {
+      currentSpeakerIndex = currentSpeakerIndex === 1 ? 2 : 1;
+    }
+
+    return normalizedSegment;
   });
 
   return {

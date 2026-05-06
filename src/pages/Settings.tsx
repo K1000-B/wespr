@@ -12,7 +12,12 @@ type StorageInfo = Awaited<ReturnType<typeof wespr.getStorageInfo>>;
 const defaultPrefs: AppPrefs = {
   defaultModelId: '',
   timestampGranularity: 'segment',
-  exportDirectory: ''
+  exportDirectory: '',
+  keepRemoteMedia: false,
+  remoteMediaDirectory: '',
+  keepVoiceAudio: false,
+  defaultMicrophoneId: '',
+  defaultVoiceMode: 'memo'
 };
 
 const defaultStorage: StorageInfo = {
@@ -20,9 +25,13 @@ const defaultStorage: StorageInfo = {
   logsPath: '',
   tempDir: '',
   exportDirectory: '',
+  remoteMediaDir: '',
+  voiceSessionsDir: '',
   managedModelsBytes: 0,
   logBytes: 0,
-  tempCacheBytes: 0
+  tempCacheBytes: 0,
+  remoteMediaBytes: 0,
+  voiceAudioBytes: 0
 };
 
 const sections = [
@@ -77,6 +86,20 @@ export function Settings() {
     const result = await wespr.clearCache();
     await refreshStorage();
     setFeedback(`Cache vidé: ${formatBytes(result.freed)} libérés.`);
+    window.setTimeout(() => setFeedback(''), 2200);
+  };
+
+  const purgeRemoteMedia = async () => {
+    const result = await wespr.purgeRemoteMedia();
+    await refreshStorage();
+    setFeedback(`Médias distants supprimés: ${formatBytes(result.freed)} libérés.`);
+    window.setTimeout(() => setFeedback(''), 2200);
+  };
+
+  const purgeVoiceAudio = async () => {
+    const result = await wespr.purgeVoiceAudio();
+    await refreshStorage();
+    setFeedback(`Audios de dictée supprimés: ${formatBytes(result.freed)} libérés.`);
     window.setTimeout(() => setFeedback(''), 2200);
   };
 
@@ -144,6 +167,23 @@ export function Settings() {
               </div>
             </div>
 
+            <div className="card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-3)' }}>
+              <div style={{ fontWeight: 'var(--fw-semibold)' }}>Comprendre le catalogue</div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                Chaque carte résume le modèle, son poids, sa langue et son profil d’usage.
+              </div>
+              <div style={{ display: 'flex', gap: 'var(--space-6)', flexWrap: 'wrap', color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                <span>Pastilles vertes: rapidité d’exécution sur votre Mac.</span>
+                <span>Pastilles violettes: qualité de transcription attendue.</span>
+              </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                Les variantes `q5` et `q8` sont compressées: elles prennent moins de place, souvent avec une légère baisse de précision.
+              </div>
+              <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                `turbo` privilégie la vitesse sur les gros modèles. `tdrz` sert à marquer les changements de locuteur.
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
               {models.map((model) => (
                 <ModelCard key={model.id} model={model} />
@@ -188,6 +228,14 @@ export function Settings() {
                 <div style={{ color: 'var(--text-secondary)' }}>Logs</div>
                 <div className="mono" style={{ fontSize: 'var(--fs-xl)' }}>{formatBytes(storage.logBytes)}</div>
               </div>
+              <div className="card" style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-2)' }}>
+                <div style={{ color: 'var(--text-secondary)' }}>Médias distants</div>
+                <div className="mono" style={{ fontSize: 'var(--fs-xl)' }}>{formatBytes(storage.remoteMediaBytes)}</div>
+              </div>
+              <div className="card" style={{ padding: 'var(--space-5)', display: 'grid', gap: 'var(--space-2)' }}>
+                <div style={{ color: 'var(--text-secondary)' }}>Audios de dictée</div>
+                <div className="mono" style={{ fontSize: 'var(--fs-xl)' }}>{formatBytes(storage.voiceAudioBytes)}</div>
+              </div>
             </div>
 
             <div className="card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-4)' }}>
@@ -195,7 +243,9 @@ export function Settings() {
                 ['Dossier des modèles', storage.modelsDir],
                 ['Journal WeSpR', storage.logsPath],
                 ['Cache temporaire', storage.tempDir],
-                ['Dossier d’export', storage.exportDirectory]
+                ['Dossier d’export', storage.exportDirectory],
+                ['Cache médias distants', storage.remoteMediaDir],
+                ['Sessions vocales', storage.voiceSessionsDir]
               ].map(([label, targetPath]) => (
                 <div key={label} style={{ display: 'grid', gap: 'var(--space-2)' }}>
                   <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>{label}</div>
@@ -215,6 +265,12 @@ export function Settings() {
               </button>
               <button className="btn btn-ghost" onClick={() => void clearCache()}>
                 Vider le cache
+              </button>
+              <button className="btn btn-ghost" onClick={() => void purgeRemoteMedia()}>
+                Purger les médias distants
+              </button>
+              <button className="btn btn-ghost" onClick={() => void purgeVoiceAudio()}>
+                Purger les audios de dictée
               </button>
             </div>
           </>
@@ -268,6 +324,79 @@ export function Settings() {
                   </button>
                 </div>
               </div>
+
+              <label
+                className="card"
+                style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}
+              >
+                <div>
+                  <div style={{ fontWeight: 'var(--fw-medium)' }}>Conserver les médias distants</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                    Garder l’audio récupéré depuis une URL pour le relire plus tard.
+                  </div>
+                </div>
+                <input
+                  className="toggle"
+                  type="checkbox"
+                  checked={prefs.keepRemoteMedia}
+                  onChange={(event) => {
+                    void updatePrefs({ keepRemoteMedia: event.target.checked });
+                  }}
+                />
+              </label>
+
+              <div style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Dossier des médias distants conservés</span>
+                <div style={{ display: 'flex', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+                  <input className="input mono" value={prefs.remoteMediaDirectory} readOnly style={{ flex: 1, minWidth: 320 }} />
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      void wespr.pickDirectory().then((directory) => {
+                        if (directory) {
+                          void updatePrefs({ remoteMediaDirectory: directory });
+                        }
+                      });
+                    }}
+                  >
+                    Choisir
+                  </button>
+                </div>
+              </div>
+
+              <label
+                className="card"
+                style={{ padding: 'var(--space-4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}
+              >
+                <div>
+                  <div style={{ fontWeight: 'var(--fw-medium)' }}>Conserver les audios de dictée</div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-sm)' }}>
+                    Garder les mémos vocaux après transcription.
+                  </div>
+                </div>
+                <input
+                  className="toggle"
+                  type="checkbox"
+                  checked={prefs.keepVoiceAudio}
+                  onChange={(event) => {
+                    void updatePrefs({ keepVoiceAudio: event.target.checked });
+                  }}
+                />
+              </label>
+
+              <label style={{ display: 'grid', gap: 'var(--space-2)' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Mode voix par défaut</span>
+                <select
+                  className="input"
+                  value={prefs.defaultVoiceMode}
+                  onChange={(event) => {
+                    void updatePrefs({ defaultVoiceMode: event.target.value as AppPrefs['defaultVoiceMode'] });
+                  }}
+                >
+                  <option value="memo">Mémo vocal</option>
+                  <option value="live">Temps réel</option>
+                </select>
+              </label>
             </div>
 
             <div className="card" style={{ padding: 'var(--space-6)', display: 'grid', gap: 'var(--space-3)' }}>

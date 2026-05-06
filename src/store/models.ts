@@ -6,6 +6,7 @@ type ModelsState = {
   models: Model[];
   progress: Record<string, DownloadProgress>;
   pausedIds: string[];
+  recentlyInstalledIds: string[];
   refresh: () => Promise<void>;
   download: (id: string) => Promise<void>;
   deleteModel: (id: string) => Promise<void>;
@@ -18,22 +19,45 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
   models: [],
   progress: {},
   pausedIds: [],
+  recentlyInstalledIds: [],
   refresh: async () => {
     const [models, pausedIds] = await Promise.all([wespr.listModels(), wespr.getPausedDownloads()]);
-    set({ models, pausedIds });
+    set((state) => ({
+      models,
+      pausedIds,
+      recentlyInstalledIds: state.recentlyInstalledIds.filter((id) =>
+        models.some((model) => model.id === id && model.installed)
+      )
+    }));
   },
   download: async (id: string) => {
     const result = await wespr.downloadModel(id);
     if (result === 'completed') {
       set((state) => ({
-        pausedIds: state.pausedIds.filter((entry) => entry !== id)
+        progress: Object.fromEntries(
+          Object.entries(state.progress).filter(([key]) => key !== id)
+        ),
+        pausedIds: state.pausedIds.filter((entry) => entry !== id),
+        recentlyInstalledIds: state.recentlyInstalledIds.includes(id)
+          ? state.recentlyInstalledIds
+          : [...state.recentlyInstalledIds, id]
       }));
       await get().refresh();
       return;
     }
     if (result === 'cancelled') {
       set((state) => ({
-        pausedIds: state.pausedIds.filter((entry) => entry !== id)
+        progress: Object.fromEntries(
+          Object.entries(state.progress).filter(([key]) => key !== id)
+        ),
+        pausedIds: state.pausedIds.filter((entry) => entry !== id),
+        recentlyInstalledIds: state.recentlyInstalledIds.filter((entry) => entry !== id)
+      }));
+      return;
+    }
+    if (result === 'paused') {
+      set((state) => ({
+        pausedIds: state.pausedIds.includes(id) ? state.pausedIds : [...state.pausedIds, id]
       }));
     }
   },
@@ -54,7 +78,8 @@ export const useModelsStore = create<ModelsState>((set, get) => ({
       delete next[id];
       return {
         progress: next,
-        pausedIds: state.pausedIds.filter((entry) => entry !== id)
+        pausedIds: state.pausedIds.filter((entry) => entry !== id),
+        recentlyInstalledIds: state.recentlyInstalledIds.filter((entry) => entry !== id)
       };
     });
   },
