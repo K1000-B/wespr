@@ -117,6 +117,11 @@ export function registerModelIpc() {
   ipcMain.handle('wespr:open-logs', async () => shell.openPath(getLogDir()));
 
   ipcMain.handle('wespr:request-mic-access', async () => {
-    return systemPreferences.askForMediaAccess('microphone');
+    const before = systemPreferences.getMediaAccessStatus('microphone');
+    void writeLog(`mic: status before ask = ${before}`);
+    const granted = await systemPreferences.askForMediaAccess('microphone');
+    const after = systemPreferences.getMediaAccessStatus('microphone');
+    void writeLog(`mic: askForMediaAccess returned ${String(granted)}, status after = ${after}`);
+    return granted;
   });
 }

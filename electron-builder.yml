@@ -1,6 +1,7 @@
 appId: com.wespr.app
 productName: WeSpR
 copyright: Copyright © 2026 WeSpR Contributors
+afterPack: scripts/afterPack.js
 
 directories:
   output: release

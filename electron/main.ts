@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { stat } from 'node:fs/promises';
 import { Readable } from 'node:stream';
-import { app, BrowserWindow, nativeImage, nativeTheme, protocol } from 'electron';
+import { app, BrowserWindow, nativeImage, nativeTheme, protocol, session, systemPreferences } from 'electron';
 import { ensureBundledBinaries, writeLog } from './services/ffmpeg';
 import { registerTranscribeIpc } from './ipc/transcribe';
 import { registerModelIpc } from './ipc/models';
@@ -106,6 +106,16 @@ app.whenReady().then(async () => {
       }
     );
   });
+  session.defaultSession.setPermissionRequestHandler(async (_webContents, permission, callback) => {
+    if (permission === 'media') {
+      const granted = await systemPreferences.askForMediaAccess('microphone');
+      void writeLog(`mic: permission request from renderer → ${String(granted)}`);
+      callback(granted);
+    } else {
+      callback(false);
+    }
+  });
+
   await ensureBundledBinaries();
   registerTranscribeIpc();
   registerModelIpc();
