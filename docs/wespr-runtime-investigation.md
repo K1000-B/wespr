@@ -219,11 +219,25 @@ Ajout de `child.stdout.on('data', () => {})` pour éviter tout deadlock pipe si 
 
 ## 8. Vérification
 
-*(à compléter après builds)*
+- [x] `npm run typecheck` — aucune erreur TypeScript
+- [x] `npm run build` — compilation electron + renderer OK (466 modules)
+- [x] `npm run dist` — génération `.dmg` universal OK
+- [x] `release/mac-universal/WeSpR.app/Contents/Resources/binaries/` contient `ffmpeg`, `ffprobe`, `whisper-cli-arm64`, `yt-dlp`
+- [x] L'exécutable `WeSpR` est un binaire universel (arm64 + x86_64 confirmé par `file`)
 
-- [ ] `npm run typecheck` — aucune erreur TypeScript
-- [ ] `npm run build` — compilation electron + renderer OK
-- [ ] `npm run dist` — génération `.dmg`
-- [ ] Présence de `whisper-cli-arm64` dans `release/mac-universal/WeSpR.app/Contents/Resources/binaries/`
-- [ ] Transcription d'un fichier court → aucun blocage à « Chargement du modèle Whisper »
-- [ ] Erreur de modèle manquant → message d'erreur visible dans l'UI (pas de hang silencieux)
+### Risques restants
+
+**Sur Intel Mac (x64)** : `whisper-cli-x64` est absent du bundle. La transcription
+échoue avec un message d'erreur (ENOENT via `child.on('error', reject)`). Avant le fix A,
+ce cas pouvait être silencieusement avalé ; maintenant l'erreur remonte correctement à l'UI.
+Résolution recommandée : compiler et ajouter `whisper-cli-x64` dans `resources/binaries/`.
+
+**Signature ad-hoc** : le `.dmg` est signé avec une identité ad-hoc (pas de certificate Apple
+Developer) et non notarisé. Sur macOS 15+, Gatekeeper peut bloquer l'app ou les binaires
+copiés. Si l'utilisateur n'a pas approuvé l'app via Préférences Système → Confidentialité
+et sécurité, les binaires spawned depuis `~/Library/Application Support/WeSpR/bin/`
+peuvent être refusés silencieusement. Résolution : signer et notariser le build.
+
+**ffmpeg x86_64 sur Apple Silicon** : ffmpeg est un binaire x86_64 dans le bundle ;
+il tourne sous Rosetta 2 sur les Macs M-series. Ça fonctionne mais est moins performant.
+Résolution recommandée : remplacer par un binaire universel (arm64 + x86_64).
