@@ -4,7 +4,7 @@ import { useTranscriptionStore } from '../store/transcription';
 const STEPS = [
   ['downloading', 'Téléchargement de l’audio', 'Récupération du média distant si nécessaire'],
   ['converting', 'Préparation du fichier', 'Conversion en 16 kHz mono · audio extrait'],
-  ['segmenting', 'Chargement du modèle Whisper', 'Exécuté entièrement sur votre Mac'],
+  ['segmenting', 'Découpage de l’audio', 'Préparation des segments pour Whisper'],
   ['transcribing', 'Transcription en cours…', 'Segment X/N · langue détectée · confiance X%'],
   ['merging', 'Détection des locuteurs', 'Identification de qui parle quand'],
   ['cleanup', 'Ponctuation et formatage', 'Phrases complètes, paragraphes, majuscules'],

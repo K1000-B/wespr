@@ -181,6 +181,7 @@ export async function runStreamingCommand(
 
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args);
+    child.stdout.on('data', () => {});
     child.stderr.on('data', (chunk) => {
       const value = chunk.toString();
       stderr.push(value);
