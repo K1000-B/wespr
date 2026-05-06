@@ -1,7 +1,7 @@
 {
   "name": "wespr",
   "productName": "WeSpR",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local audio & video transcription for macOS — powered by whisper.cpp",
   "main": "dist-electron/main.js",
   "author": "WeSpR Contributors",
