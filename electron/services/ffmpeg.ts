@@ -57,10 +57,8 @@ export async function ensureBundledBinaries() {
     const from = path.join(sourceDir, file);
     if (await fs.pathExists(from)) {
       const to = path.join(binDir, file);
-      if (!(await fs.pathExists(to))) {
-        await fs.copy(from, to);
-        await fs.chmod(to, 0o755);
-      }
+      await fs.copy(from, to, { overwrite: true });
+      await fs.chmod(to, 0o755);
     }
   }
 
