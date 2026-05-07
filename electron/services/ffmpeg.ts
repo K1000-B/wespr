@@ -252,23 +252,11 @@ async function resolveExecutable(
 }
 
 async function resolveWhisperExecutable(explicitPath: string | undefined) {
-  const commonDirs = [
-    '/Users/camile/Dev/ai/whisper-cpp',
-    path.join(os.homedir(), 'Dev', 'ai', 'whisper-cpp')
-  ];
-
   const explicitCandidate = explicitPath
     ? await resolvePathOrDirectory(explicitPath, whisperRelativeCandidates())
     : null;
   if (explicitCandidate) {
     return explicitCandidate;
-  }
-
-  for (const directory of commonDirs) {
-    const resolved = await resolvePathOrDirectory(directory, whisperRelativeCandidates());
-    if (resolved) {
-      return resolved;
-    }
   }
 
   return resolveExecutable(
