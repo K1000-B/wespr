@@ -3,7 +3,7 @@
 <br/>
 
 <img src="resources/icon.png" alt="WeSpR icon" width="96" height="96" />
- 
+
 <h1>WeSpR</h1>
 
 <p><strong>Transcription audio et vidéo — 100% locale, 100% privée.</strong><br/>
@@ -11,8 +11,8 @@ Propulsé par <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a> 
 
 <p>
   <img src="https://img.shields.io/badge/macOS-12%2B-black?style=flat-square&logo=apple&logoColor=white" alt="macOS 12+" />
-  <img src="https://img.shields.io/badge/arch-arm64%20%7C%20x64-8B5CF6?style=flat-square" alt="arm64 | x64" />
-  <img src="https://img.shields.io/badge/whisper.cpp-latest-8B5CF6?style=flat-square" alt="whisper.cpp" />
+  <img src="https://img.shields.io/badge/Apple%20Silicon-M1%20→%20M4-8B5CF6?style=flat-square&logo=apple&logoColor=white" alt="Apple Silicon M1→M4" />
+  <img src="https://img.shields.io/badge/Intel-x86__64-8B5CF6?style=flat-square" alt="Intel x86_64" />
   <img src="https://img.shields.io/github/license/K1000-B/wespr?style=flat-square&color=8B5CF6" alt="MIT License" />
   <img src="https://img.shields.io/github/stars/K1000-B/wespr?style=flat-square&color=8B5CF6" alt="Stars" />
 </p>
@@ -25,11 +25,11 @@ Propulsé par <a href="https://github.com/ggml-org/whisper.cpp">whisper.cpp</a> 
 
 ## Ce que fait WeSpR
 
-WeSpR transcrit vos fichiers audio et vidéo directement sur votre Mac. Rien ne quitte votre machine — pas de serveur, pas de clé API, pas de compte.
+WeSpR transcrit vos fichiers audio et vidéo **directement sur votre Mac**, sans connexion internet. Rien ne quitte votre machine — pas de serveur, pas de clé API, pas de compte.
 
-Glissez un fichier. Choisissez un modèle. Récupérez le texte.
+**Glissez un fichier. Choisissez un modèle. Récupérez le texte.**
 
-WeSpR prend aussi en charge l'import depuis une URL et les mémos vocaux locaux, avec suppression de l'historique et conservation optionnelle des médias.
+WeSpR prend aussi en charge l'import depuis une URL YouTube/web et l'enregistrement vocal, avec un historique consultable et des exports dans six formats.
 
 <br/>
 
@@ -46,7 +46,7 @@ MP3, WAV, M4A, FLAC, OGG, MP4, MOV, MKV, AVI, WEBM — et tout ce que ffmpeg sup
 
 **Formats de sortie**
 
-TXT brut, TXT horodaté, SRT, VTT, Markdown, JSON structuré.
+TXT brut · TXT horodaté · SRT · VTT · Markdown · JSON structuré
 
 </td>
 </tr>
@@ -55,18 +55,30 @@ TXT brut, TXT horodaté, SRT, VTT, Markdown, JSON structuré.
 
 **Modèles disponibles**
 
-Tiny (75 Mo) → Large-v3 (3.1 Go). Variantes anglais optimisées. Diarisation (identification des locuteurs) avec les modèles `-tdrz`.
+Tiny (75 Mo) → Large-v3 (3,1 Go). Variantes anglais optimisées. Diarisation (identification des locuteurs) avec les modèles `-tdrz`.
 
 </td>
 <td>
 
 **Vie privée totale**
 
-Zéro telemetry. Zéro analytics. Zéro réseau à l'usage. Les logs restent dans `~/Library/Logs/WeSpR/`.
+Zéro telemetry · Zéro analytics · Zéro réseau à l'usage. Les logs restent dans `~/Library/Logs/WeSpR/`.
 
 </td>
 </tr>
 </table>
+
+---
+
+## Compatibilité
+
+| | Supporté |
+|---|---|
+| **Processeur** | Apple Silicon M1, M2, M3, M4 — et Intel x86_64 |
+| **macOS** | Monterey 12 · Ventura 13 · Sonoma 14 · Sequoia 15 |
+| **Architecture** | Universal binary (un seul .dmg pour tous les Mac) |
+
+> WeSpR utilise Metal pour l'accélération GPU sur Apple Silicon. Sur Intel, le traitement s'effectue en CPU avec Accelerate/BLAS.
 
 ---
 
@@ -80,32 +92,38 @@ Téléchargez le dernier `.dmg` depuis la [page Releases](https://github.com/K10
 WeSpR-{version}-universal.dmg   →   Double-cliquez, glissez dans Applications.
 ```
 
-> **Note sécurité macOS** : l'app n'est pas notarisée en v1. Au premier lancement, faites clic droit → Ouvrir plutôt que double-clic, ou exécutez :
-> ```bash
-> xattr -cr /Applications/WeSpR.app
-> ```
+### Note macOS Gatekeeper
+
+L'app n'est pas encore notarisée Apple. Au premier lancement, macOS peut la bloquer. Deux options :
+
+**Option 1 — clic droit** : dans le Finder, faites clic droit sur `WeSpR.app` → **Ouvrir** → confirmer.
+
+**Option 2 — terminal** :
+```bash
+xattr -dr com.apple.quarantine /Applications/WeSpR.app
+```
 
 ### Premier lancement
 
-Au démarrage, WeSpR télécharge automatiquement les modèles **Whisper Small** (466 Mo) et **Whisper Small EN** (466 Mo) depuis HuggingFace. La progression est affichée en temps réel. Vous pouvez ignorer cette étape et installer d'autres modèles plus tard dans Réglages.
+WeSpR télécharge automatiquement le modèle **Whisper Small** (466 Mo) au démarrage. La progression est visible dans l'app. Vous pouvez ignorer cette étape et choisir un autre modèle dans Réglages.
 
 ---
 
 ## Modèles Whisper
 
-| Modèle | Taille | Langues | Vitesse | Précision | Notes |
-|--------|--------|---------|---------|-----------|-------|
-| Tiny | 75 Mo | 99 | ●●●●● | ●● | Test rapide |
-| Base | 142 Mo | 99 | ●●●● | ●●● | |
-| **Small** ★ | 466 Mo | 99 | ●●● | ●●●● | **Défaut** |
-| Small EN | 466 Mo | 🇬🇧 | ●●● | ●●●● | Optimisé anglais |
-| Small EN-tdrz | 466 Mo | 🇬🇧 | ●●● | ●●●● | + Diarisation |
-| Medium | 1.5 Go | 99 | ●● | ●●●● | |
-| Large-v3 | 3.1 Go | 99 | ●● | ●●●●● | Qualité studio |
-| Large-v3-Q5 | 1.1 Go | 99 | ●●● | ●●●●● | Quantized, moins de RAM |
-| Large-v3-Turbo | 1.6 Go | 99 | ●●●●● | ●●●●● | 8× plus rapide que Large |
+| Modèle | Taille | Langues | Vitesse | Précision |
+|--------|--------|---------|---------|-----------|
+| Tiny | 75 Mo | 99 | ●●●●● | ●● |
+| Base | 142 Mo | 99 | ●●●● | ●●● |
+| **Small** ★ | 466 Mo | 99 | ●●● | ●●●● |
+| Small EN | 466 Mo | 🇬🇧 | ●●● | ●●●● |
+| Small EN-tdrz | 466 Mo | 🇬🇧 | ●●● | ●●●● |
+| Medium | 1,5 Go | 99 | ●● | ●●●● |
+| Large-v3 | 3,1 Go | 99 | ●● | ●●●●● |
+| Large-v3-Q5 | 1,1 Go | 99 | ●●● | ●●●●● |
+| Large-v3-Turbo | 1,6 Go | 99 | ●●●●● | ●●●●● |
 
-Les modèles se téléchargent depuis [HuggingFace — ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) et sont stockés dans `~/Library/Application Support/WeSpR/models/`.
+★ Modèle par défaut. Les modèles sont téléchargés depuis [HuggingFace — ggerganov/whisper.cpp](https://huggingface.co/ggerganov/whisper.cpp) et stockés dans `~/Library/Application Support/WeSpR/models/`.
 
 ---
 
@@ -117,38 +135,26 @@ Les modèles se téléchargent depuis [HuggingFace — ggerganov/whisper.cpp](ht
 - Node.js 20+
 - Xcode Command Line Tools : `xcode-select --install`
 - CMake : `brew install cmake`
-- GitHub CLI : `brew install gh`
 
 ### Setup
 
 ```bash
-# Cloner
 git clone https://github.com/K1000-B/wespr.git
 cd wespr
-
-# Installer les dépendances Node
 npm install
-
-# Préparer les binaires locaux nécessaires au bundle
-# (prend plusieurs minutes à la première exécution)
-npm run postinstall
-
-# Si le dossier resources/binaries/ est vide, exécutez aussi:
-npm run setup:binaries
+npm run postinstall      # compile whisper.cpp + télécharge ffmpeg (plusieurs minutes)
 ```
-
-Le `.dmg` publié contient les binaires nécessaires. Le dossier `resources/binaries/` sert surtout à préparer les builds locaux avant `npm run dist`.
 
 ### Développement
 
 ```bash
-npm run dev          # Electron + Vite en mode watch
+npm run dev              # Electron + Vite en mode watch
 ```
 
 ### Build distribution
 
 ```bash
-npm run dist         # Génère release/WeSpR-{version}-universal.dmg
+npm run dist             # → release/WeSpR-{version}-universal.dmg
 ```
 
 ---
@@ -163,12 +169,11 @@ whisper.ts          ←─ IPC ─→  Result.tsx      (viewer + export)
 segmenter.ts        preload    Settings.tsx    (modèles + préfs)
 merger.ts
 modelManager.ts
-cleanup.ts
 ```
 
 Le renderer n'a aucun accès Node.js direct. Tout passe par `window.wespr.*` exposé via preload avec `contextIsolation: true`.
 
-Le pipeline de transcription découpe les fichiers en **segments de 55 secondes** (overlap 2s) avant de les envoyer à whisper-cli, ce qui élimine les hallucinations sur les longs fichiers.
+Le pipeline de transcription découpe les fichiers en segments (55 s avec 2 s d'overlap) avant de les envoyer à `whisper-cli`, ce qui élimine les hallucinations sur les longs fichiers.
 
 ---
 
@@ -177,17 +182,10 @@ Le pipeline de transcription découpe les fichiers en **segments de 55 secondes*
 Les contributions sont bienvenues. Lisez [`AGENTS.md`](AGENTS.md) avant d'ouvrir une PR — il documente les conventions de commit, les règles d'architecture et les contraintes de design.
 
 ```bash
-# Fork + clone
 gh repo fork K1000-B/wespr --clone
 cd wespr
-
-# Nouvelle branche
 git checkout -b feat/ma-fonctionnalite
-
-# Développer, committer (conventional commits)
-git commit -m "feat(export): add DOCX format"
-
-# Ouvrir une PR
+# ... développer ...
 gh pr create --web
 ```
 
@@ -197,28 +195,10 @@ gh pr create --web
 
 MIT — voir [`LICENSE`](LICENSE).
 
-Les modèles Whisper sont distribués sous licence MIT par OpenAI.
-ffmpeg est distribué sous LGPL 2.1+.
-whisper.cpp est distribué sous MIT par Georgi Gerganov.
-
-## commande quarantaine
-```bash
-
-xattr -dr com.apple.quarantine /Applications/WeSpR.app
-
-xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/ffmpeg
-
-xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/ffprobe
-
-xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/whisper-cli-arm64
-
-xattr -dr com.apple.quarantine /Applications/WeSpR.app/Contents/Resources/binaries/yt-dlp
-````
+Les modèles Whisper sont distribués sous licence MIT par OpenAI. ffmpeg est distribué sous LGPL 2.1+. whisper.cpp est distribué sous MIT par Georgi Gerganov.
 
 ---
 
 <div align="center">
-<sub>Fait avec ♥ et whisper.cpp · Aucune donnée ne quitte votre Mac</sub>
+<sub>Fait avec ♥ · Aucune donnée ne quitte votre Mac</sub>
 </div>
-
-
